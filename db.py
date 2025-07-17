@@ -46,10 +46,15 @@ async def if_registered(user_id: int):
         row = await cursor.fetchone()
         return row[0] > 0
     
-async def get_user_role(user_id: int):
+async def get_user_role(user_id: int) -> str:
     async with aiosqlite.connect(DB_NAME) as db:
         cursor = await db.execute("SELECT role FROM users WHERE user_id = ?",
                                   (user_id,)
         )
         row = await cursor.fetchone()
         return row[0]
+    
+async def get_users():
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("SELECT * FROM users WHERE role = user")
+        return cursor
