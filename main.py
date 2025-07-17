@@ -9,7 +9,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types.input_file import BufferedInputFile
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
-from db import add_user, init_db, if_registered, get_user_role, get_users, add_organizer_, get_number_of_users_
+from db import add_user, init_db, if_registered, get_user_role, get_users, add_organizer_, get_number_of_users_, get_checked_in, set_checked_in
 
 load_dotenv()
 token = os.getenv("BOT_TOKEN")
@@ -31,16 +31,23 @@ class AddOrganizer(StatesGroup):
 async def start_handler(message: Message, state: FSMContext):
     parts = message.text.strip().split()
     user = message.from_user
-
-    if len(parts) > 1:
-        ref_id = parts[1]
-        await message.answer(f"Вы пришли по ссылке пользователя {ref_id}")
-
+    if await if_registered(user.id):
+        if len(parts) > 1:
+            ref_id = parts[1]
+            if await get_user_role(user.id) != "user":
+                if await get_checked_in(ref_id) == 0:
+                    await set_checked_in(ref_id)
+                    await message.answer("Пользователь регистрировался и отмечен как присутствующий")
+                elif await get_checked_in(ref_id) == 1:
+                    await message.answer("Пользователь уже отмечен как присутствующий")
+                else:
+                    await message.answer("Пользователь не регистрировался на мероприятии")
+            else:
+                await message.answer("Нет прав доступа")
     else:
-        if not await if_registered(user.id):
-            await state.update_data(user_id=user.id, user_name=user.username)
-            await message.answer("Введите ФИО")
-            await state.set_state(Registration.waiting_for_full_name)
+        await state.update_data(user_id=user.id, user_name=user.username)
+        await message.answer("Введите ФИО")
+        await state.set_state(Registration.waiting_for_full_name)
 
 @dp.message(Registration.waiting_for_full_name)
 async def get_full_name(message: Message, state: FSMContext):
@@ -76,21 +83,9 @@ async def admin_panel(message: Message):
     builder.row(
         InlineKeyboardButton(text="Кол-во зарегистрированных", callback_data="count_users")
     )
-    builder.row(
-        InlineKeyboardButton(text="Далее", callback_data="admin_next")
-    )
     keyboard = builder.as_markup()
-
     await message.answer("Выберете опцию: ",reply_markup=keyboard)
-
-@dp.callback_query(F.data == "admin_next")
-async def show_more_options(call: CallbackQuery):
-    kb = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="Добавить организатора")]],
-        resize_keyboard=True
-    )
-    await call.message.answer("Выберете опцию:", reply_markup=kb)
-    await call.answer()
+    KeyboardButton(text="Добавить организатора")
 
 @dp.message(F.text == "Добавить организатора")
 async def add_organizer(message: Message, state: FSMContext):
@@ -120,13 +115,17 @@ async def add_phone(message: Message, state: FSMContext):
     await state.update_data(phone=message.text.strip())
     data = await state.get_data()
 
-    await add_organizer_(
-        int(data["user_id"]),
-        data["user_name"],
-        data["full_name"],
-        data["phone"]
-    )
-    await message.answer("Организатор успешно добавлен")
+    try:
+        await add_organizer_(
+            int(data["user_id"]),
+            data["user_name"],
+            data["full_name"],
+            data["phone"]
+        )
+        await message.answer("Организатор успешно добавлен")
+    except Exception as e:
+        await message.answer(f"Ошибка в добавлении: {e}")
+
     await state.clear()
 
 @dp.callback_query(F.data == "broadcast")

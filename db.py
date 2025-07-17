@@ -11,7 +11,6 @@ async def init_db():
             full_name TEXT,
             phone TEXT,
             role TEXT DEFAULT 'user',
-            qr_received INTEGER DEFAULT 0,
             checked_in  INTEGER DEFAULT 0
         )
                          """)
@@ -26,7 +25,7 @@ async def add_user(user_id: int, user_name: str, full_name: str, phone: str):
 
 async def if_registered(user_id: int):
     async with aiosqlite.connect(DB_NAME) as db:
-        cursor = await db.execute("SELECT COUNT(*) FROM users WHERE user_id = ? AND full_name NOT NULL AND phone NOT NULL",
+        cursor = await db.execute("SELECT COUNT(*) FROM users WHERE user_id = ?",
                                  (user_id,)
         )
         row = await cursor.fetchone()
@@ -48,7 +47,7 @@ async def get_users():
     
 async def add_organizer_(user_id: int, user_name: str, full_name: str, phone: str):
     async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute("INSERT OR IGNORE INTO users (user_id, user_name, full_name, phone, role) VALUES (?, ?, ?, ?, 'organizer')",
+        await db.execute("INSERT INTO users (user_id, user_name, full_name, phone, role) VALUES (?, ?, ?, ?, 'organizer')",
                          (user_id, user_name, full_name, phone)
         )
         await db.commit()
@@ -58,3 +57,20 @@ async def get_number_of_users_():
         cursor = await db.execute("SELECT COUNT(*) FROM users WHERE role = 'user'")
         row = await cursor.fetchone()
         return row[0]
+    
+async def get_checked_in(user_id: int):
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("SELECT checked_in FROM users WHERE user_id = ?",
+                         (user_id,)
+        )
+        row = await cursor.fetchone()
+        if row is None:
+            return None
+        return row[0]
+    
+async def set_checked_in(user_id: int):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("UPDATE users SET checked_in = 1 WHERE user_id = ?",
+                         (user_id,)
+        )
+        await db.commit()
