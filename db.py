@@ -17,24 +17,10 @@ async def init_db():
                          """)
         await db.commit()
 
-async def add_user(user_id: int, user_name: str):
+async def add_user(user_id: int, user_name: str, full_name: str, phone: str):
     async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute("INSERT OR IGNORE INTO users (user_id, user_name) VALUES (?, ?)",
-                         (user_id, user_name)
-        )
-        await db.commit()
-
-async def set_full_name(user_id: int, full_name: str):
-    async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute("UPDATE users SET full_name = ? WHERE user_id = ?",
-                         (full_name, user_id)
-        )
-        await db.commit()
-
-async def set_phone(user_id: int, phone: str):
-    async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute("UPDATE users SET phone = ? WHERE user_id = ?",
-                         (phone, user_id)
+        await db.execute("INSERT OR IGNORE INTO users (user_id, user_name, full_name, phone) VALUES (?, ?, ?, ?)",
+                         (user_id, user_name, full_name, phone)
         )
         await db.commit()
 
@@ -56,5 +42,19 @@ async def get_user_role(user_id: int) -> str:
     
 async def get_users():
     async with aiosqlite.connect(DB_NAME) as db:
-        cursor = await db.execute("SELECT * FROM users WHERE role = user")
-        return cursor
+        cursor = await db.execute("SELECT user_id FROM users WHERE role = 'user'")
+        rows = await cursor.fetchall()
+        return rows
+    
+async def add_organizer_(user_id: int, user_name: str, full_name: str, phone: str):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("INSERT OR IGNORE INTO users (user_id, user_name, full_name, phone, role) VALUES (?, ?, ?, ?, 'organizer')",
+                         (user_id, user_name, full_name, phone)
+        )
+        await db.commit()
+
+async def get_number_of_users_():
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("SELECT COUNT(*) FROM users WHERE role = 'user'")
+        row = await cursor.fetchone()
+        return row[0]
