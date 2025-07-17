@@ -83,13 +83,15 @@ async def admin_panel(message: Message):
     builder.row(
         InlineKeyboardButton(text="Кол-во зарегистрированных", callback_data="count_users")
     )
+    builder.row(
+        InlineKeyboardButton(text="Добавить организатора", callback_data="add_org")
+    )
     keyboard = builder.as_markup()
     await message.answer("Выберете опцию: ",reply_markup=keyboard)
-    KeyboardButton(text="Добавить организатора")
 
-@dp.message(F.text == "Добавить организатора")
-async def add_organizer(message: Message, state: FSMContext):
-    await message.answer("Введите ID")
+@dp.callback_query(F.data == "add_org")
+async def add_organizer(callback: CallbackQuery, state: FSMContext):
+    await callback.message.answer("Введите ID")
     await state.set_state(AddOrganizer.waiting_for_user_id)
 
 @dp.message(AddOrganizer.waiting_for_user_id)
