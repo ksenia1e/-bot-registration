@@ -1,4 +1,5 @@
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import BotCommand
 
 class Registration(StatesGroup):
     waiting_for_full_name = State()
@@ -9,3 +10,10 @@ class AddOrganizer(StatesGroup):
     waiting_for_user_name = State()
     waiting_for_full_name = State()
     waiting_for_phone = State()
+
+async def set_bot_commands(bot):
+    commands = [
+        BotCommand(command="start", description="Начать работу"),
+        BotCommand(command="admin", description="Админ-панель"),
+    ]
+    await bot.set_my_commands(commands)

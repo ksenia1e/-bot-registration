@@ -37,6 +37,8 @@ async def get_user_role(user_id: int) -> str:
                                   (user_id,)
         )
         row = await cursor.fetchone()
+        if row is None:
+            return None
         return row[0]
     
 async def get_users():

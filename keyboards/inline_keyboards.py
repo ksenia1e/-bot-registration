@@ -1,4 +1,4 @@
-from aiogram.types import InlineKeyboardButton
+from aiogram.types import InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 builder_admin = InlineKeyboardBuilder()
@@ -17,3 +17,11 @@ keyboard_admin = builder_admin.as_markup()
 builder_qr = InlineKeyboardBuilder()
 builder_qr.button(text="Получить мой QR-код", callback_data="get_qr")
 keyboard_qr = builder_qr.as_markup()
+
+phone_kb = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Отправить номер телефона", request_contact=True)]
+    ],
+    resize_keyboard=True,
+    one_time_keyboard=True
+)
