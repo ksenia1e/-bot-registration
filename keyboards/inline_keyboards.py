@@ -11,6 +11,9 @@ builder_admin.row(
 builder_admin.row(
     InlineKeyboardButton(text="Добавить организатора", callback_data="add_org")
 )
+builder_admin.row(
+    InlineKeyboardButton(text="Удалить организатора", callback_data="delete_org")
+)
 keyboard_admin = builder_admin.as_markup()
 
 
@@ -25,3 +28,5 @@ phone_kb = ReplyKeyboardMarkup(
     resize_keyboard=True,
     one_time_keyboard=True
 )
+
+builder_show_organizers = InlineKeyboardBuilder()

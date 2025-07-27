@@ -32,13 +32,16 @@ async def get_phone(message: Message, state: FSMContext):
     await state.update_data(phone=phone)
     data = await state.get_data()
 
-    await add_user(
+    flag = await add_user(
         int(data["user_id"]),
         data["user_name"],
         data["full_name"],
         data["phone"]
     )
-    logger.info(f"Пользователь {message.from_user.id} зарегистрирован с данными: {data}")
-    
-    await message.answer("Вы успешно зарегистрированы!", reply_markup=ReplyKeyboardRemove())
+    if flag[0] == True:
+        logger.info(f"Пользователь {message.from_user.id} зарегистрирован с данными: {data}")
+        await message.answer("Вы успешно зарегистрированы!", reply_markup=ReplyKeyboardRemove())
+    else:
+        logger.warning(f"Пользователь {message.from_user.id} уже существует. Ошибка: {flag[1]}")
+        await message.answer("Вы уже зарегистрированы", reply_markup=ReplyKeyboardRemove())
     await state.clear()

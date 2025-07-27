@@ -7,9 +7,7 @@ class Registration(StatesGroup):
 
 class AddOrganizer(StatesGroup):
     waiting_for_user_id = State()
-    waiting_for_user_name = State()
     waiting_for_full_name = State()
-    waiting_for_phone = State()
 
 async def set_bot_commands(bot):
     commands = [

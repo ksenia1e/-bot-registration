@@ -9,8 +9,8 @@ import logging
 
 from utils import AddOrganizer
 from bot import bot, bot_username
-from keyboards.inline_keyboards import keyboard_admin, keyboard_qr
-from database import get_user_role, get_users, add_organizer_, get_number_of_users_
+from keyboards.inline_keyboards import keyboard_admin, keyboard_qr, builder_show_organizers
+from database import get_user_role, get_users, add_organizer_, get_number_of_users_, get_organizers, delete_organizer_
 
 admin_router = Router()
 logger = logging.getLogger(__name__)
@@ -38,15 +38,6 @@ async def add_user_id(message: Message, state: FSMContext):
     user_id = message.text.strip()
     await state.update_data(user_id=user_id)
     logger.info(f"Получен user_id: {user_id} от админа {message.from_user.id}")
-    await message.answer("Введите username")
-    await state.set_state(AddOrganizer.waiting_for_user_name)
-
-
-@admin_router.message(AddOrganizer.waiting_for_user_name)
-async def add_user_name(message: Message, state: FSMContext):
-    username = message.text.strip()
-    await state.update_data(user_name=username)
-    logger.info(f"Получен username: {username} от админа {message.from_user.id}")
     await message.answer("Введите ФИО")
     await state.set_state(AddOrganizer.waiting_for_full_name)
 
@@ -56,22 +47,13 @@ async def add_full_name(message: Message, state: FSMContext):
     full_name = message.text.strip()
     await state.update_data(full_name=full_name)
     logger.info(f"Получено ФИО: {full_name} от админа {message.from_user.id}")
-    await message.answer("Введите номер телефона")
-    await state.set_state(AddOrganizer.waiting_for_phone)
 
-
-@admin_router.message(AddOrganizer.waiting_for_phone)
-async def add_phone(message: Message, state: FSMContext):
-    phone = message.text.strip()
-    await state.update_data(phone=phone)
     data = await state.get_data()
 
     try:
         await add_organizer_(
             int(data["user_id"]),
-            data["user_name"],
-            data["full_name"],
-            data["phone"]
+            data["full_name"]
         )
         await message.answer("Организатор успешно добавлен")
         logger.info(f"Организатор {data['user_id']} успешно добавлен админом {message.from_user.id}")
@@ -119,3 +101,24 @@ async def get_number_of_users(callback: CallbackQuery):
     num = await get_number_of_users_()
     await callback.message.answer(f"Количество зарегистрированных: {num}")
     logger.info(f"Админ {callback.from_user.id} запросил количество пользователей: {num}")
+
+@admin_router.callback_query(F.data == "delete_org")
+async def show_organizers(callback: CallbackQuery):
+    organizers = await get_organizers()
+
+    for user_id, full_name in organizers:
+        builder_show_organizers.button(
+            text=full_name,
+            callback_data=f"org:{user_id}"
+        )
+    await callback.message.answer("Выберите организатора на удаление", reply_markup=builder_show_organizers.as_markup())
+
+    logger.info(f"Админ {callback.from_user.id} запросил вывод организаторов на удаление")
+
+@admin_router.callback_query(F.data.startswith("org:"))
+async def delete_organizer(callback: CallbackQuery):
+    user_id = int(callback.data.split(":")[1])
+    await delete_organizer_(user_id)
+
+    await callback.message.answer(f"Организатор удален")
+    logger.info(f"Удален организатор {user_id}")

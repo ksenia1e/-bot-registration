@@ -1,4 +1,5 @@
 import aiosqlite
+import sqlite3
 
 DB_NAME = "users.db"
 
@@ -18,10 +19,14 @@ async def init_db():
 
 async def add_user(user_id: int, user_name: str, full_name: str, phone: str):
     async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute("INSERT OR IGNORE INTO users (user_id, user_name, full_name, phone) VALUES (?, ?, ?, ?)",
-                         (user_id, user_name, full_name, phone)
-        )
-        await db.commit()
+        try:
+            await db.execute("INSERT INTO users (user_id, user_name, full_name, phone) VALUES (?, ?, ?, ?)",
+                            (user_id, user_name, full_name, phone)
+            )
+            await db.commit()
+            return (True,)
+        except sqlite3.IntegrityError as e:
+            return (False, e)
 
 async def if_registered(user_id: int):
     async with aiosqlite.connect(DB_NAME) as db:
@@ -44,13 +49,12 @@ async def get_user_role(user_id: int) -> str:
 async def get_users():
     async with aiosqlite.connect(DB_NAME) as db:
         cursor = await db.execute("SELECT user_id FROM users WHERE role = 'user'")
-        rows = await cursor.fetchall()
-        return rows
+        return await cursor.fetchall()
     
-async def add_organizer_(user_id: int, user_name: str, full_name: str, phone: str):
+async def add_organizer_(user_id: int, full_name: str):
     async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute("INSERT INTO users (user_id, user_name, full_name, phone, role) VALUES (?, ?, ?, ?, 'organizer')",
-                         (user_id, user_name, full_name, phone)
+        await db.execute("INSERT INTO users (user_id, full_name, role) VALUES (?, ?, 'organizer')",
+                         (user_id, full_name)
         )
         await db.commit()
 
@@ -73,6 +77,18 @@ async def get_checked_in(user_id: int):
 async def set_checked_in(user_id: int):
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute("UPDATE users SET checked_in = 1 WHERE user_id = ?",
+                         (user_id,)
+        )
+        await db.commit()
+
+async def get_organizers():
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("SELECT user_id, full_name FROM users WHERE role = 'organizer'")
+        return await cursor.fetchall()
+    
+async def delete_organizer_(user_id: int):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("DELETE FROM users WHERE user_id = ?",
                          (user_id,)
         )
         await db.commit()

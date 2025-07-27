@@ -15,9 +15,9 @@ async def start_handler(message: Message, state: FSMContext):
     user = message.from_user
 
     logger.info(f"Получена команда /start от пользователя {user.id} (@{user.username})")
-
-    if await if_registered(user.id):
-        if len(parts) > 1:
+    
+    if len(parts) > 1:
+        if await if_registered(user.id):
             ref_id = parts[1]
             logger.info(f"Попытка отметить присутствие для пользователя с ID {ref_id} админом {user.id}")
 
