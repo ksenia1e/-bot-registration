@@ -30,3 +30,12 @@ phone_kb = ReplyKeyboardMarkup(
 )
 
 builder_show_organizers = InlineKeyboardBuilder()
+
+builder_user = InlineKeyboardBuilder()
+builder_user.row(
+    InlineKeyboardButton(text="Получить расписание", callback_data="get_schedule")
+)
+builder_user.row(
+    InlineKeyboardButton(text="Получить информацию о розыгрыше", callback_data="get_raffle")
+)
+keyboard_user = builder_user.as_markup()

@@ -1,11 +1,12 @@
 from aiogram import Router, F
-from aiogram.types import Message, ReplyKeyboardRemove
+from aiogram.types import Message, ReplyKeyboardRemove, CallbackQuery
 from aiogram.fsm.context import FSMContext
 import logging
 
-from keyboards.inline_keyboards import phone_kb
+from keyboards.inline_keyboards import phone_kb, keyboard_user
 from utils import Registration
 from database import add_user
+from google_sheets import get_all_data
 
 user_router = Router()
 logger = logging.getLogger(__name__)
@@ -40,8 +41,39 @@ async def get_phone(message: Message, state: FSMContext):
     )
     if flag[0] == True:
         logger.info(f"Пользователь {message.from_user.id} зарегистрирован с данными: {data}")
-        await message.answer("Вы успешно зарегистрированы!", reply_markup=ReplyKeyboardRemove())
+        await message.answer("Вы успешно зарегистрированы!", reply_markup=keyboard_user)
     else:
         logger.warning(f"Пользователь {message.from_user.id} уже существует. Ошибка: {flag[1]}")
-        await message.answer("Вы уже зарегистрированы", reply_markup=ReplyKeyboardRemove())
+        await message.answer("Вы уже зарегистрированы", reply_markup=keyboard_user)
     await state.clear()
+
+@user_router.callback_query(F.data == "get_schedule")
+async def get_schedule(callback: CallbackQuery):
+    logger.info(f"Пользователь {callback.from_user.id} запрашивает расписание мероприятий")
+    data = get_all_data(0)
+    response = "\n".join(
+        f"🎯 **{row['Название']}**\n"
+        f"📅 {row['Дата']}\n"
+        f"🕒 {row['Время начала']} - {row['Время окончания']}\n"
+        f"📍 {row['Место']}\n"
+        f"📌 {row['Описание']}\n"
+        f"────────────────────"
+        for row in data
+    )
+
+    await callback.message.answer(response, reply_markup=keyboard_user)
+
+@user_router.callback_query(F.data == "get_raffle")
+async def get_raffle(callback: CallbackQuery):
+    logger.info(f"Пользователь {callback.from_user.id} запрашивает информацию о розыгрыше")
+    data = get_all_data(1)
+    response = "\n".join(
+        f"🏆 **{row['Название']}**\n"
+        f"📅 {row['Дата']}\n"
+        f"⏰ {row['Время начала']} – {row['Время окончания']}\n"
+        f"💰 Призы: {row['Призы']}\n"
+        f"────────────────────"
+        for row in data
+    )
+
+    await callback.message.answer(response, reply_markup=keyboard_user)
