@@ -88,7 +88,12 @@ async def get_organizers():
     
 async def delete_organizer_(user_id: int):
     async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute("DELETE FROM users WHERE user_id = ?",
+        await db.execute("UPDATE users SET role = 'user' WHERE user_id = ?",
                          (user_id,)
         )
         await db.commit()
+
+async def get_users_id_name():
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("SELECT user_id, user_name FROM users WHERE role = 'user'")
+        return await cursor.fetchall()

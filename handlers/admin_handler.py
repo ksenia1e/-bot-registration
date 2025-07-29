@@ -1,4 +1,5 @@
 import qrcode
+import asyncio
 from io import BytesIO
 from aiogram import Router, F
 from aiogram.types import Message
@@ -7,10 +8,10 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.types.input_file import BufferedInputFile
 import logging
 
-from utils import AddOrganizer
+from utils import AddOrganizer, get_random_user
 from bot import bot, bot_username
 from keyboards.inline_keyboards import keyboard_admin, keyboard_qr, builder_show_organizers
-from database import get_user_role, get_users, add_organizer_, get_number_of_users_, get_organizers, delete_organizer_
+from database import get_user_role, get_users, add_organizer_, get_number_of_users_, get_organizers, delete_organizer_, get_users_id_name
 
 admin_router = Router()
 logger = logging.getLogger(__name__)
@@ -122,3 +123,35 @@ async def delete_organizer(callback: CallbackQuery):
 
     await callback.message.answer(f"Организатор удален")
     logger.info(f"Удален организатор {user_id}")
+
+@admin_router.callback_query(F.data == "hold_draw")
+async def hold_draw(callback: CallbackQuery):
+    await callback.message.answer("Розыгрыш начат...")
+    users = await get_users_id_name()
+
+    if users is None:
+        await callback.message.answer("Нет пользователей")
+        return
+
+    logger.info(f"Админ {callback.from_user.id} начал розыгрыша для {len(users)} пользователей")
+
+    text1 = "🎉Сейчас будет проведен розыгрыш, результаты будут через 5 секунд..."
+
+    for user_id, _ in users:
+        try:
+            await bot.send_message(chat_id=user_id, text=text1, reply_markup=keyboard_qr)
+        except Exception as e:
+            logger.warning(f"Ошибка при отправке пользователю {user_id}: {e}")
+
+    await asyncio.sleep(5)
+    winner_user_id, winner_user_name = await get_random_user(users)
+    text2 = f"**Результаты розыгрыша**\n 🏆 Победитель: {winner_user_name or 'Аноним'} (ID: {winner_user_id})"
+
+    for user_id, _ in users:
+        try:
+            await bot.send_message(chat_id=user_id, text=text2, reply_markup=keyboard_qr)
+        except Exception as e:
+            logger.warning(f"Ошибка при отправке пользователю {user_id}: {e}")
+    
+    await callback.answer("Рассылка завершена.")
+    logger.info(f"Рассылка завершена админом {callback.from_user.id}")

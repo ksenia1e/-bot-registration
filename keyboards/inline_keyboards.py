@@ -14,6 +14,9 @@ builder_admin.row(
 builder_admin.row(
     InlineKeyboardButton(text="Удалить организатора", callback_data="delete_org")
 )
+builder_admin.row(
+    InlineKeyboardButton(text="Провести розыгрыш", callback_data="hold_draw")
+)
 keyboard_admin = builder_admin.as_markup()
 
 
