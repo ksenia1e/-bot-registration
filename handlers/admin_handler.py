@@ -127,13 +127,13 @@ async def delete_organizer(callback: CallbackQuery):
 @admin_router.callback_query(F.data == "hold_draw")
 async def hold_draw(callback: CallbackQuery):
     await callback.message.answer("Розыгрыш начат...")
+    logger.info(f"Админ {callback.from_user.id} начал розыгрыш для {len(users)} пользователей")
+
     users = await get_users_id_name()
-
-    if users is None:
-        await callback.message.answer("Нет пользователей")
+    if not users:
+        await callback.message.answer("Нет пользователей для розыгрыша")
+        logger.info("Нет пользователей для розыгрыша")
         return
-
-    logger.info(f"Админ {callback.from_user.id} начал розыгрыша для {len(users)} пользователей")
 
     text1 = "🎉Сейчас будет проведен розыгрыш, результаты будут через 5 секунд..."
 
@@ -145,6 +145,7 @@ async def hold_draw(callback: CallbackQuery):
 
     await asyncio.sleep(5)
     winner_user_id, winner_user_name = await get_random_user(users)
+
     text2 = f"**Результаты розыгрыша**\n 🏆 Победитель: {winner_user_name or 'Аноним'} (ID: {winner_user_id})"
 
     for user_id, _ in users:
@@ -153,5 +154,5 @@ async def hold_draw(callback: CallbackQuery):
         except Exception as e:
             logger.warning(f"Ошибка при отправке пользователю {user_id}: {e}")
     
-    await callback.answer("Рассылка завершена.")
+    await callback.message.answer("Розыгрыш завершен.")
     logger.info(f"Рассылка завершена админом {callback.from_user.id}")
