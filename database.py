@@ -1,5 +1,4 @@
 import aiosqlite
-import sqlite3
 
 DB_NAME = "users.db"
 
@@ -19,14 +18,10 @@ async def init_db():
 
 async def add_user(user_id: int, user_name: str, full_name: str, phone: str):
     async with aiosqlite.connect(DB_NAME) as db:
-        try:
-            await db.execute("INSERT INTO users (user_id, user_name, full_name, phone) VALUES (?, ?, ?, ?)",
-                            (user_id, user_name, full_name, phone)
-            )
-            await db.commit()
-            return (True,)
-        except sqlite3.IntegrityError as e:
-            return (False, e)
+        await db.execute("INSERT INTO users (user_id, user_name, full_name, phone) VALUES (?, ?, ?, ?)",
+                        (user_id, user_name, full_name, phone)
+        )
+        await db.commit()
 
 async def if_registered(user_id: int):
     async with aiosqlite.connect(DB_NAME) as db:

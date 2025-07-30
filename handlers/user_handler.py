@@ -23,28 +23,34 @@ async def get_full_name(message: Message, state: FSMContext):
 
 @user_router.message(Registration.waiting_for_phone)
 async def get_phone(message: Message, state: FSMContext):
-    if message.contact is not None:
-        phone = message.contact.phone_number
-        logger.info(f"Пользователь {message.from_user.id} отправил номер через кнопку: {phone}")
-    else:
-        phone = message.text.strip()
-        logger.info(f"Пользователь {message.from_user.id} ввёл номер вручную: {phone}")
+    if message.contact is None:
+        logger.warning(f"Пользователь {message.from_user.id} ввёл номер вручную")
+        await message.answer("Пожалуйста, отправьте номер через кнопку ниже", reply_markup=phone_kb)
+        await state.set_state(Registration.waiting_for_phone)
+        return
+    
+    phone = message.contact.phone_number
+    logger.info(f"Пользователь {message.from_user.id} отправил номер через кнопку: {phone}")
 
+    if not phone:
+        await message.answer("Не удалось получить номер")
+        logger.warning(f"Не удалось получить номер пользователя {message.from_user.id}")
+        return
+    
+    logger.info(f"Номер получен: {phone}")
     await state.update_data(phone=phone)
-    data = await state.get_data()
 
-    flag = await add_user(
+    data = await state.get_data()
+    await add_user(
         int(data["user_id"]),
         data["user_name"],
         data["full_name"],
         data["phone"]
     )
-    if flag[0] == True:
-        logger.info(f"Пользователь {message.from_user.id} зарегистрирован с данными: {data}")
-        await message.answer("Вы успешно зарегистрированы!", reply_markup=keyboard_user)
-    else:
-        logger.warning(f"Пользователь {message.from_user.id} уже существует. Ошибка: {flag[1]}")
-        await message.answer("Вы уже зарегистрированы", reply_markup=keyboard_user)
+    
+    logger.info(f"Пользователь {message.from_user.id} зарегистрирован с данными: {data}")
+    await message.answer("Вы успешно зарегистрированы!", reply_markup=ReplyKeyboardRemove())
+    await message.answer("Меню", reply_markup=keyboard_user)
     await state.clear()
 
 @user_router.callback_query(F.data == "get_schedule")
@@ -62,6 +68,7 @@ async def get_schedule(callback: CallbackQuery):
     )
 
     await callback.message.answer(response, reply_markup=keyboard_user)
+    await callback.answer()
 
 @user_router.callback_query(F.data == "get_raffle")
 async def get_raffle(callback: CallbackQuery):
@@ -77,3 +84,4 @@ async def get_raffle(callback: CallbackQuery):
     )
 
     await callback.message.answer(response, reply_markup=keyboard_user)
+    await callback.answer()

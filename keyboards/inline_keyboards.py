@@ -32,7 +32,17 @@ phone_kb = ReplyKeyboardMarkup(
     one_time_keyboard=True
 )
 
-builder_show_organizers = InlineKeyboardBuilder()
+async def get_kb_show_organozers(organizers):
+    builder = InlineKeyboardBuilder()
+
+    for user_id, full_name in organizers:
+        builder.button(
+            text=full_name,
+            callback_data=f"org:{user_id}"
+        )
+    builder.adjust(2)
+    return builder.as_markup()
+
 
 builder_user = InlineKeyboardBuilder()
 builder_user.row(

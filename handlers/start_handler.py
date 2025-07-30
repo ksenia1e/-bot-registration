@@ -5,6 +5,7 @@ import logging
 
 from utils import Registration
 from database import if_registered, get_user_role, set_checked_in, get_checked_in
+from keyboards.inline_keyboards import keyboard_user
 
 start_router = Router()
 logger = logging.getLogger(__name__)
@@ -40,7 +41,11 @@ async def start_handler(message: Message, state: FSMContext):
             await message.answer("Добро пожаловать! Вы уже зарегистрированы на мероприятие!")
             logger.info(f"Зарегистрированный пользователь {user.id} вошёл без параметров")
     else:
-        await state.update_data(user_id=user.id, user_name=user.username)
-        await message.answer("Добро пожаловать! Введите ФИО")
-        await state.set_state(Registration.waiting_for_full_name)
-        logger.info(f"Начата регистрация нового пользователя {user.id}")
+        if await if_registered(user.id):
+            logger.info(f"Вывод меню для пользоватедя {user.id}")
+            await message.answer("Меню", reply_markup=keyboard_user)
+        else:
+            await state.update_data(user_id=user.id, user_name=user.username)
+            await message.answer("Добро пожаловать! Введите ФИО")
+            await state.set_state(Registration.waiting_for_full_name)
+            logger.info(f"Начата регистрация нового пользователя {user.id}")

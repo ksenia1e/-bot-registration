@@ -2,7 +2,7 @@ import qrcode
 import asyncio
 from io import BytesIO
 from aiogram import Router, F
-from aiogram.types import Message
+from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 from aiogram.types.input_file import BufferedInputFile
@@ -10,7 +10,7 @@ import logging
 
 from utils import AddOrganizer, get_random_user
 from bot import bot, bot_username
-from keyboards.inline_keyboards import keyboard_admin, keyboard_qr, builder_show_organizers
+from keyboards.inline_keyboards import keyboard_admin, keyboard_qr, get_kb_show_organozers
 from database import get_user_role, get_users, add_organizer_, get_number_of_users_, get_organizers, delete_organizer_, get_users_id_name
 
 admin_router = Router()
@@ -32,6 +32,7 @@ async def add_organizer(callback: CallbackQuery, state: FSMContext):
     logger.info(f"Админ {callback.from_user.id} начал добавление организатора")
     await callback.message.answer("Введите ID")
     await state.set_state(AddOrganizer.waiting_for_user_id)
+    await callback.answer()
 
 
 @admin_router.message(AddOrganizer.waiting_for_user_id)
@@ -102,18 +103,15 @@ async def get_number_of_users(callback: CallbackQuery):
     num = await get_number_of_users_()
     await callback.message.answer(f"Количество зарегистрированных: {num}")
     logger.info(f"Админ {callback.from_user.id} запросил количество пользователей: {num}")
+    await callback.answer()
 
 @admin_router.callback_query(F.data == "delete_org")
 async def show_organizers(callback: CallbackQuery):
     organizers = await get_organizers()
 
-    for user_id, full_name in organizers:
-        builder_show_organizers.button(
-            text=full_name,
-            callback_data=f"org:{user_id}"
-        )
-    await callback.message.answer("Выберите организатора на удаление", reply_markup=builder_show_organizers.as_markup())
-
+    kb = await get_kb_show_organozers(organizers)
+    await callback.message.answer("Выберите организатора на удаление", reply_markup=kb)
+    await callback.answer()
     logger.info(f"Админ {callback.from_user.id} запросил вывод организаторов на удаление")
 
 @admin_router.callback_query(F.data.startswith("org:"))
@@ -121,17 +119,18 @@ async def delete_organizer(callback: CallbackQuery):
     user_id = int(callback.data.split(":")[1])
     await delete_organizer_(user_id)
 
-    await callback.message.answer(f"Организатор удален")
+    await callback.message.answer(f"Организатор удален", reply_markup=ReplyKeyboardRemove())
+    await callback.answer()
     logger.info(f"Удален организатор {user_id}")
 
 @admin_router.callback_query(F.data == "hold_draw")
 async def hold_draw(callback: CallbackQuery):
     await callback.message.answer("Розыгрыш начат...")
-    logger.info(f"Админ {callback.from_user.id} начал розыгрыш для {len(users)} пользователей")
-
     users = await get_users_id_name()
+    logger.info(f"Админ {callback.from_user.id} начал розыгрыш для {len(users)} пользователей")
     if not users:
         await callback.message.answer("Нет пользователей для розыгрыша")
+        await callback.answer()
         logger.info("Нет пользователей для розыгрыша")
         return
 
@@ -139,7 +138,7 @@ async def hold_draw(callback: CallbackQuery):
 
     for user_id, _ in users:
         try:
-            await bot.send_message(chat_id=user_id, text=text1, reply_markup=keyboard_qr)
+            await bot.send_message(chat_id=user_id, text=text1)
         except Exception as e:
             logger.warning(f"Ошибка при отправке пользователю {user_id}: {e}")
 
@@ -150,9 +149,10 @@ async def hold_draw(callback: CallbackQuery):
 
     for user_id, _ in users:
         try:
-            await bot.send_message(chat_id=user_id, text=text2, reply_markup=keyboard_qr)
+            await bot.send_message(chat_id=user_id, text=text2)
         except Exception as e:
             logger.warning(f"Ошибка при отправке пользователю {user_id}: {e}")
     
     await callback.message.answer("Розыгрыш завершен.")
+    await callback.answer()
     logger.info(f"Рассылка завершена админом {callback.from_user.id}")
