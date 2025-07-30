@@ -16,6 +16,53 @@ async def init_db():
                          """)
         await db.commit()
 
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS shedule (
+                id INTEGER PRIMARY KEY,
+                name TEXT,
+                data TEXT,
+                start_time TEXT,
+                end_time TEXT,
+                place TEXT,
+                description TEXT
+            )
+                        """)
+        await db.commit()
+
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS raffle (
+                id INTEGER PRIMARY KEY,
+                name TEXT,
+                data TEXT,
+                start_time TEXT,
+                end_time TEXT,
+                prizes TEXT
+            )
+                        """)
+        await db.commit()
+
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS user_event (
+                user_id INTEGER,
+                event_id INTEGER,
+                PRIMARY KEY (user_id, event_id),
+                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+                FOREIGN KEY (event_id) REFERENCES shedule(id) ON DELETE CASCADE
+            )
+                        """)
+        await db.commit()
+
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS event_prize (
+                event_id INTEGER,
+                prize_id INTEGER,
+                PRIMARY KEY (event_id, prize_id),
+                FOREIGN KEY (prize_id) REFERENCES raffle(id) ON DELETE CASCADE,
+                FOREIGN KEY (event_id) REFERENCES shedule(id) ON DELETE CASCADE
+            )
+                        """)
+        await db.commit()
+
 async def add_user(user_id: int, user_name: str, full_name: str, phone: str):
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute("INSERT INTO users (user_id, user_name, full_name, phone) VALUES (?, ?, ?, ?)",
