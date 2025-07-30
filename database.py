@@ -17,7 +17,7 @@ async def init_db():
         await db.commit()
 
         await db.execute("""
-            CREATE TABLE IF NOT EXISTS shedule (
+            CREATE TABLE IF NOT EXISTS schedule (
                 id INTEGER PRIMARY KEY,
                 name TEXT,
                 data TEXT,
@@ -139,3 +139,34 @@ async def get_users_id_name():
     async with aiosqlite.connect(DB_NAME) as db:
         cursor = await db.execute("SELECT user_id, user_name FROM users WHERE role = 'user'")
         return await cursor.fetchall()
+    
+async def get_schedule():
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("SELECT * FROM schedule")
+        columns = [desc[0] for desc in cursor.description]
+        return [dict(zip(columns, row)) for row in await cursor.fetchall()]
+    
+async def get_raffle():
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("SELECT * FROM raffle")
+        columns = [desc[0] for desc in cursor.description]
+        return [dict(zip(columns, row)) for row in await cursor.fetchall()]
+    
+async def add_schedule(id: int, name: str, data: str, start_time: str, end_time: str, place: str, description: str):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("INSERT INTO schedule (id, name, data, start_time, end_time, place, description) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                                  (id, name, data, start_time, end_time, place, description)
+        )
+        await db.commit()
+
+async def add_raffle(id: int, name: str, data: str, start_time: str, end_time: str, prizes: str):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("INSERT INTO raffle (id, name, data, start_time, end_time, prizes) VALUES (?, ?, ?, ?, ?, ?)",
+                         (id, name, data, start_time, end_time, prizes)
+        )
+        await db.commit()
+
+async def clear_table(table_name: str):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute(f"DELETE FROM {table_name}")
+        await db.commit()

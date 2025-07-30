@@ -17,6 +17,9 @@ builder_admin.row(
 builder_admin.row(
     InlineKeyboardButton(text="Провести розыгрыш", callback_data="hold_draw")
 )
+builder_admin.row(
+    InlineKeyboardButton(text="Синхронизировать базу данных и гугл таблицы", callback_data="synchronization")
+)
 keyboard_admin = builder_admin.as_markup()
 
 
