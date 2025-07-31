@@ -8,7 +8,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.types.input_file import BufferedInputFile
 import logging
 
-from utils import AddOrganizer, get_random_user
+from utils import AddOrganizer, get_random_user, get_values
 from google_sheets import get_all_data
 from bot import bot, bot_username
 from keyboards.inline_keyboards import keyboard_admin, keyboard_qr, get_kb_show_organozers
@@ -160,14 +160,42 @@ async def hold_draw(callback: CallbackQuery):
 
 @admin_router.callback_query(F.data == "synchronization")
 async def synchronization_db_and_gs(callback: CallbackQuery):
+    await callback.answer()
     logger.info(f"Админ {callback.from_user.id} запрашивает синхронизацию базы данных и гугл таблиц")
     data_schedule = get_all_data(0)
     schedule = await get_schedule()
+    flag = False
 
-    if len(data_schedule) != len(schedule):
+    if len(data_schedule[0].keys()) != len(schedule[0].keys()):
         if not schedule:
             logger.info("Таблица schedule пуста")
             for row in data_schedule:
+                try:
+                    await add_schedule(
+                        row['ID'],
+                        row['Название'],
+                        row['Дата'],
+                        row['Время начала'],
+                        row['Время окончания'],
+                        row['Место'],
+                        row['Описание']
+                        )
+                except Exception as e:
+                    logger.warning(f"Ошибка добавления в таблицу schedule: {e}")
+                    callback.answer()
+                    return
+            flag = True
+            logger.info("Успешное обновление таблицы schedule")
+        else:
+            logger.warning("Ошибка синхронизации schedule и гугл таблицы Schedule. Необходимо обновить гугл таблицу Schedule")
+            await callback.message.answer("Ошибка синхронизации schedule и гугл таблицы Schedule. Необходимо обновить гугл таблицу Schedule")
+            await callback.answer()
+            return
+    
+    if not flag and get_values(data_schedule) != get_values(schedule):
+        await clear_table("schedule")
+        for row in data_schedule:
+            try:
                 await add_schedule(
                     row['ID'],
                     row['Название'],
@@ -177,34 +205,45 @@ async def synchronization_db_and_gs(callback: CallbackQuery):
                     row['Место'],
                     row['Описание']
                     )
-        else:
-            logger.warning("Ошибка в синхронизации schedule и гугл таблицы Schedule. Необходимо обновить гугл таблицу Schedule")
-            await callback.message.answer("Ошибка в синхронизации schedule и гугл таблицы Schedule. Необходимо обновить гугл таблицу Schedule")
-            await callback.answer()
-            return
-    
-    if data_schedule != schedule:
-        await clear_table("schedule")
-        for row in data_schedule:
-            await add_schedule(
-                row['ID'],
-                row['Название'],
-                row['Дата'],
-                row['Время начала'],
-                row['Время окончания'],
-                row['Место'],
-                row['Описание']
-                )
+            except Exception as e:
+                logger.warning(f"Ошибка добавления в таблицу schedule: {e}")
+                callback.answer()
+                return
         logger.info("Успешное обновление таблицы schedule")
     
     raffle = await get_raffle()
     data_raffle = get_all_data(1)
-    await callback.answer()
+    flag = False
 
-    if len(data_raffle) != len(raffle):
+    if len(data_raffle[0].keys()) != len(raffle[0].keys()):
         if not raffle:
             logger.info("Таблица raffle пуста")
             for row in data_raffle:
+                try:
+                    await add_raffle(
+                        row['ID'],
+                        row['Название'],
+                        row['Дата'],
+                        row['Время начала'],
+                        row['Время окончания'],
+                        row['Призы']
+                        )
+                except Exception as e:
+                    logger.warning(f"Ошибка добавления в таблицу raffle: {e}")
+                    await callback.answer()
+                    return
+            flag = True
+            logger.info("Успешное обновление таблицы raffle")
+        else:
+            logger.warning("Ошибка синхронизации raffle и гугл таблицы Raffle. Необходимо обновить гугл таблицу Raffle")
+            await callback.message.answer("Ошибка синхронизации raffle и гугл таблицы Raffle. Необходимо обновить гугл таблицу Raffle")
+            await callback.answer()
+            return
+    
+    if not flag and get_values(data_raffle) != get_values(raffle):
+        await clear_table("raffle")
+        for row in data_raffle:
+            try:
                 await add_raffle(
                     row['ID'],
                     row['Название'],
@@ -213,25 +252,10 @@ async def synchronization_db_and_gs(callback: CallbackQuery):
                     row['Время окончания'],
                     row['Призы']
                     )
-        else:
-            logger.warning("Ошибка в синхронизации raffle и гугл таблицы Raffle. Необходимо обновить гугл таблицу Raffle")
-            await callback.message.answer("Ошибка в синхронизации raffle и гугл таблицы Raffle. Необходимо обновить гугл таблицу Raffle")
-            await callback.answer()
-            return
-    
-    if data_raffle != raffle:
-        await clear_table("raffle")
-        for row in data_raffle:
-            await add_raffle(
-                row['ID'],
-                row['Название'],
-                row['Дата'],
-                row['Время начала'],
-                row['Время окончания'],
-                row['Призы']
-                )
+            except Exception as e:
+                logger.warning(f"Ошибка добавления в таблицу raffle: {e}")
+                await callback.answer()
+                return
         logger.info("Успешное обновление таблицы raffle")
-
     
     await callback.message.answer("Синхронизация базы данных и гугл таблиц успешно завершена")
-    await callback.answer()

@@ -19,3 +19,6 @@ async def set_bot_commands(bot):
 
 async def get_random_user(users):
     return random.choice(users)
+
+def get_values(dict: dict):
+    return [list(d.values()) for d in dict]
