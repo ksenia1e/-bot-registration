@@ -47,7 +47,7 @@ async def init_db():
                 event_id INTEGER,
                 PRIMARY KEY (user_id, event_id),
                 FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-                FOREIGN KEY (event_id) REFERENCES shedule(id) ON DELETE CASCADE
+                FOREIGN KEY (event_id) REFERENCES schedule(id) ON DELETE CASCADE
             )
                         """)
         await db.commit()
@@ -58,7 +58,7 @@ async def init_db():
                 prize_id INTEGER,
                 PRIMARY KEY (event_id, prize_id),
                 FOREIGN KEY (prize_id) REFERENCES raffle(id) ON DELETE CASCADE,
-                FOREIGN KEY (event_id) REFERENCES shedule(id) ON DELETE CASCADE
+                FOREIGN KEY (event_id) REFERENCES schedule(id) ON DELETE CASCADE
             )
                         """)
         await db.commit()
@@ -170,3 +170,19 @@ async def clear_table(table_name: str):
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute(f"DELETE FROM {table_name}")
         await db.commit()
+
+async def add_user_event(user_id: int, event_id: int):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("PRAGMA foreign_keys = ON")
+        try:
+            await db.execute("INSERT INTO user_event (user_id, event_id) VALUES (?, ?)",
+                            (user_id, event_id))
+            await db.commit()
+            return (True,)
+        except Exception as e:
+            return (False, e)
+        
+async def get_all_table(table_name: str):
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute(f"SELECT * FROM {table_name}")
+        return await cursor.fetchall()

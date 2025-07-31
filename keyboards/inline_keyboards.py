@@ -55,3 +55,21 @@ builder_user.row(
     InlineKeyboardButton(text="Получить информацию о розыгрыше", callback_data="get_raffle")
 )
 keyboard_user = builder_user.as_markup()
+
+async def get_kb_show_event(position: int, max_position: int):
+    builder = InlineKeyboardBuilder()
+    if position > 0:
+        builder.button(
+            text="Назад",
+            callback_data=f"prev_event_{position}"
+        )
+    if position < max_position:
+        builder.button(
+            text="Далее",
+            callback_data=f"next_event_{position}"
+        )
+    builder.button(
+        text="Записаться",
+        callback_data=f"sign_up_{position}"
+    )
+    return builder.as_markup()

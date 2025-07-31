@@ -166,8 +166,7 @@ async def synchronization_db_and_gs(callback: CallbackQuery):
     schedule = await get_schedule()
     flag = False
 
-    if len(data_schedule[0].keys()) != len(schedule[0].keys()):
-        if not schedule:
+    if not schedule:
             logger.info("Таблица schedule пуста")
             for row in data_schedule:
                 try:
@@ -186,11 +185,12 @@ async def synchronization_db_and_gs(callback: CallbackQuery):
                     return
             flag = True
             logger.info("Успешное обновление таблицы schedule")
-        else:
-            logger.warning("Ошибка синхронизации schedule и гугл таблицы Schedule. Необходимо обновить гугл таблицу Schedule")
-            await callback.message.answer("Ошибка синхронизации schedule и гугл таблицы Schedule. Необходимо обновить гугл таблицу Schedule")
-            await callback.answer()
-            return
+
+    if len(data_schedule[0].keys()) != len(schedule[0].keys()):
+        logger.warning("Ошибка синхронизации schedule и гугл таблицы Schedule. Необходимо обновить гугл таблицу Schedule")
+        await callback.message.answer("Ошибка синхронизации schedule и гугл таблицы Schedule. Необходимо обновить гугл таблицу Schedule")
+        await callback.answer()
+        return
     
     if not flag and get_values(data_schedule) != get_values(schedule):
         await clear_table("schedule")
@@ -215,30 +215,30 @@ async def synchronization_db_and_gs(callback: CallbackQuery):
     data_raffle = get_all_data(1)
     flag = False
 
+    if not raffle:
+        logger.info("Таблица raffle пуста")
+        for row in data_raffle:
+            try:
+                await add_raffle(
+                    row['ID'],
+                    row['Название'],
+                    row['Дата'],
+                    row['Время начала'],
+                    row['Время окончания'],
+                    row['Призы']
+                    )
+            except Exception as e:
+                logger.warning(f"Ошибка добавления в таблицу raffle: {e}")
+                await callback.answer()
+                return
+        flag = True
+        logger.info("Успешное обновление таблицы raffle")
+
     if len(data_raffle[0].keys()) != len(raffle[0].keys()):
-        if not raffle:
-            logger.info("Таблица raffle пуста")
-            for row in data_raffle:
-                try:
-                    await add_raffle(
-                        row['ID'],
-                        row['Название'],
-                        row['Дата'],
-                        row['Время начала'],
-                        row['Время окончания'],
-                        row['Призы']
-                        )
-                except Exception as e:
-                    logger.warning(f"Ошибка добавления в таблицу raffle: {e}")
-                    await callback.answer()
-                    return
-            flag = True
-            logger.info("Успешное обновление таблицы raffle")
-        else:
-            logger.warning("Ошибка синхронизации raffle и гугл таблицы Raffle. Необходимо обновить гугл таблицу Raffle")
-            await callback.message.answer("Ошибка синхронизации raffle и гугл таблицы Raffle. Необходимо обновить гугл таблицу Raffle")
-            await callback.answer()
-            return
+        logger.warning("Ошибка синхронизации raffle и гугл таблицы Raffle. Необходимо обновить гугл таблицу Raffle")
+        await callback.message.answer("Ошибка синхронизации raffle и гугл таблицы Raffle. Необходимо обновить гугл таблицу Raffle")
+        await callback.answer()
+        return
     
     if not flag and get_values(data_raffle) != get_values(raffle):
         await clear_table("raffle")
