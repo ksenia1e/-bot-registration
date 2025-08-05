@@ -2,10 +2,14 @@ from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardRemove, CallbackQuery
 from aiogram.fsm.context import FSMContext
 import logging
+from io import BytesIO
+import qrcode
+from aiogram.types.input_file import BufferedInputFile
 
-from keyboards.inline_keyboards import phone_kb, keyboard_user, get_kb_show_event
-from utils import Registration
-from database import add_user, get_all_table, add_user_event, add_user_role
+from bot import bot_username
+from keyboards.inline_keyboards import phone_kb, keyboard_user, get_kb_show_event, get_kb_show_my_event
+from utils import Registration, output_events
+from database import add_user, get_all_table, add_user_event, add_user_role, get_my_events
 
 user_router = Router()
 logger = logging.getLogger(__name__)
@@ -78,33 +82,15 @@ async def get_schedule(callback: CallbackQuery):
 async def show_current_event(callback: CallbackQuery, events: list, position: int):
     logger.info(f"Вывод меропртиятия с позицией: {position}")
 
-    row = events[position]
-    response = (
-        f"🎯 **{row[1]}**\n"
-        f"📅 {row[2]}\n"
-        f"🕒 {row[3]} - {row[4]}\n"
-        f"📍 {row[5]}\n"
-        f"📌 {row[6]}\n"
-        f"─────────────────── "
-        f"Мероприятие {position+1}/{len(events)}"
-    )
+    response = output_events(events, position)
     keyboard = await get_kb_show_event(position, len(events)-1)
     await callback.message.answer(response, reply_markup=keyboard)
     await callback.answer()
 
 async def update_menu_events(callback: CallbackQuery, events: list, position: int):
-    logger.info(f"Обновление меню меропртиятий с позицией: {position}")
+    logger.info(f"Обновление меню мероприятий")
 
-    row = events[position]
-    response = (
-        f"🎯 **{row[1]}**\n"
-        f"📅 {row[2]}\n"
-        f"🕒 {row[3]} - {row[4]}\n"
-        f"📍 {row[5]}\n"
-        f"📌 {row[6]}\n"
-        f"─────────────────── "
-        f"Мероприятие {position+1}/{len(events)}"
-    )
+    response = output_events(events, position)
     keyboard = await get_kb_show_event(position, len(events)-1)
     await callback.message.edit_text(response, reply_markup=keyboard)
     await callback.answer()
@@ -157,3 +143,68 @@ async def get_raffle(callback: CallbackQuery):
 
     await callback.message.answer(response, reply_markup=keyboard_user)
     await callback.answer()
+
+@user_router.callback_query(F.data == "get_qr")
+async def show_my_events(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    logger.info(f"Пользователь {user_id} запрашивает qr")
+    events = await get_my_events(user_id)
+
+    if not events:
+        logger.info(f"Список мероприятий пользователя {user_id} пуст")
+        await callback.message.answer("Вы пока не записаны ни на одно мероприятие")
+        await callback.answer()
+        return
+    
+    position = 0
+    response = output_events(events, position)
+    event_id = events[position][0]
+    keyboard = await get_kb_show_my_event(position, len(events) - 1, event_id)
+    logger.info(f"Вывод меропртиятия с позицией: {position}")
+
+    await callback.message.answer(response, reply_markup=keyboard)
+    await callback.answer()
+
+async def update_menu_my_events(callback: CallbackQuery, position: int, events: list):
+    logger.info(f"Вывод меропртиятия с позицией: {position}")
+    
+    response = output_events(events, position)
+    event_id = events[position][0]
+    keyboard = await get_kb_show_my_event(position, len(events) - 1, event_id)
+    await callback.message.edit_text(response, reply_markup=keyboard)
+    await callback.answer()
+
+@user_router.callback_query(F.data.startswith("my_next_event"))
+async def get_next_event(callback: CallbackQuery):
+    position = int(callback.data.split("_")[-1]) + 1
+    user_id = callback.from_user.id
+
+    data = await get_my_events(user_id)
+    await callback.answer()
+    await update_menu_my_events(callback, position, data)
+
+@user_router.callback_query(F.data.startswith("my_prev_event"))
+async def get_next_event(callback: CallbackQuery):
+    position = int(callback.data.split("_")[-1]) - 1
+    user_id = callback.from_user.id
+
+    data = await get_my_events(user_id)
+    await callback.answer()
+    await update_menu_my_events(callback, position, data)
+
+@user_router.callback_query(F.data.startswith("get_qr"))
+async def generate_qr(callback: CallbackQuery):
+    event_id = int(callback.data.split("_")[-1])
+    
+    user_id = callback.from_user.id
+    qr_data = f"https://t.me/{bot_username}?start=ev_{user_id}_{event_id}"
+    qr_img = qrcode.make(qr_data)
+    buf = BytesIO()
+    qr_img.save(buf, format="PNG")
+    buf.seek(0)
+
+    file = BufferedInputFile(buf.read(), filename="user_qr.png")
+    await callback.message.answer_photo(photo=file, caption="Твой уникальный QR-код")
+    await callback.answer()
+
+    logger.info(f"QR-код отправлен пользователю {user_id}")

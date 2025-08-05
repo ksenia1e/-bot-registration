@@ -1,16 +1,13 @@
-import qrcode
 import asyncio
-from io import BytesIO
 from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
-from aiogram.types.input_file import BufferedInputFile
 import logging
 
 from utils import AddOrganizer, get_random_user, get_values
 from google_sheets import get_all_data
-from bot import bot, bot_username
+from bot import bot
 from keyboards.inline_keyboards import keyboard_admin, keyboard_qr, get_kb_show_organozers
 from database import get_user_role, get_users, add_organizer_, get_number_of_users_
 from database import get_organizers, delete_organizer_, get_users_id_name, get_schedule, get_raffle, add_raffle, add_schedule, clear_table, add_user_role
@@ -87,23 +84,6 @@ async def send_newsletter(callback: CallbackQuery):
 
     await callback.answer("Рассылка завершена.")
     logger.info(f"Рассылка завершена админом {callback.from_user.id}")
-
-
-@admin_router.callback_query(F.data == "get_qr")
-async def generate_qr(call: CallbackQuery):
-    user = call.from_user
-    qr_data = f"https://t.me/{bot_username}?start={user.id}"
-    qr_img = qrcode.make(qr_data)
-    buf = BytesIO()
-    qr_img.save(buf, format="PNG")
-    buf.seek(0)
-
-    file = BufferedInputFile(buf.read(), filename="user_qr.png")
-    await call.message.answer_photo(photo=file, caption="Твой уникальный QR-код")
-    await call.answer()
-
-    logger.info(f"QR-код отправлен пользователю {user.id}")
-
 
 @admin_router.callback_query(F.data == "count_users")
 async def get_number_of_users(callback: CallbackQuery):

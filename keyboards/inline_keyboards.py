@@ -23,10 +23,6 @@ builder_admin.row(
 keyboard_admin = builder_admin.as_markup()
 
 
-builder_qr = InlineKeyboardBuilder()
-builder_qr.button(text="Получить мой QR-код", callback_data="get_qr")
-keyboard_qr = builder_qr.as_markup()
-
 phone_kb = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="Отправить номер телефона", request_contact=True)]
@@ -54,6 +50,9 @@ builder_user.row(
 builder_user.row(
     InlineKeyboardButton(text="Получить информацию о розыгрыше", callback_data="get_raffle")
 )
+builder_user.row(
+    InlineKeyboardButton(text="Мой QR-код", callback_data="get_qr")
+)
 keyboard_user = builder_user.as_markup()
 
 async def get_kb_show_event(position: int, max_position: int):
@@ -71,5 +70,23 @@ async def get_kb_show_event(position: int, max_position: int):
     builder.button(
         text="Записаться",
         callback_data=f"sign_up_{position}"
+    )
+    return builder.as_markup()
+
+async def get_kb_show_my_event(position:int, max_position: int, event_id: int):
+    builder = InlineKeyboardBuilder()
+    if position > 0:
+        builder.button(
+            text="Назад",
+            callback_data=f"my_prev_event_{position}"
+        )
+    if position < max_position:
+        builder.button(
+            text="Далее",
+            callback_data=f"my_next_event_{position}"
+        )
+    builder.button(
+        text="Получить QR-код",
+        callback_data=f"get_qr_{event_id}"
     )
     return builder.as_markup()

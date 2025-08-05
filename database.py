@@ -11,8 +11,7 @@ async def init_db():
             user_id INTEGER PRIMARY KEY,
             user_name TEXT,
             full_name TEXT,
-            phone TEXT,
-            checked_in  INTEGER DEFAULT 0
+            phone TEXT
         )
                          """)
         await db.commit()
@@ -46,6 +45,7 @@ async def init_db():
             CREATE TABLE IF NOT EXISTS user_event (
                 user_id INTEGER,
                 event_id INTEGER,
+                checked_in  INTEGER DEFAULT 0,
                 PRIMARY KEY (user_id, event_id),
                 FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
                 FOREIGN KEY (event_id) REFERENCES schedule(id) ON DELETE CASCADE
@@ -124,7 +124,7 @@ async def get_number_of_users_():
     
 async def get_checked_in(user_id: int):
     async with aiosqlite.connect(DB_NAME) as db:
-        cursor = await db.execute("SELECT checked_in FROM users WHERE user_id = ?",
+        cursor = await db.execute("SELECT checked_in FROM user_event WHERE user_id = ?",
                          (user_id,)
         )
         row = await cursor.fetchone()
@@ -134,7 +134,7 @@ async def get_checked_in(user_id: int):
     
 async def set_checked_in(user_id: int):
     async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute("UPDATE users SET checked_in = 1 WHERE user_id = ?",
+        await db.execute("UPDATE user_event SET checked_in = 1 WHERE user_id = ?",
                          (user_id,)
         )
         await db.commit()
@@ -205,4 +205,11 @@ async def add_user_event(user_id: int, event_id: int):
 async def get_all_table(table_name: str):
     async with aiosqlite.connect(DB_NAME) as db:
         cursor = await db.execute(f"SELECT * FROM {table_name}")
+        return await cursor.fetchall()
+    
+async def get_my_events(user_id: int):
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("SELECT id, name, data, start_time, end_time, place, description FROM schedule INNER JOIN user_event ON schedule.id = user_event.event_id WHERE user_id = ?",
+                                  (user_id,)
+        )
         return await cursor.fetchall()

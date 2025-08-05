@@ -22,3 +22,16 @@ async def get_random_user(users):
 
 def get_values(dict: dict):
     return [list(d.values()) for d in dict]
+
+def output_events(events: list, position: int):
+    row = events[position]
+    response = (
+        f"🎯 **{row[1]}**\n"
+        f"📅 {row[2]}\n"
+        f"🕒 {row[3]} - {row[4]}\n"
+        f"📍 {row[5]}\n"
+        f"📌 {row[6]}\n"
+        f"─────────────────── "
+        f"Мероприятие {position+1}/{len(events)}"
+    )
+    return response
