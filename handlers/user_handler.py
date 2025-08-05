@@ -92,6 +92,23 @@ async def show_current_event(callback: CallbackQuery, events: list, position: in
     await callback.message.answer(response, reply_markup=keyboard)
     await callback.answer()
 
+async def update_menu_events(callback: CallbackQuery, events: list, position: int):
+    logger.info(f"Обновление меню меропртиятий с позицией: {position}")
+
+    row = events[position]
+    response = (
+        f"🎯 **{row[1]}**\n"
+        f"📅 {row[2]}\n"
+        f"🕒 {row[3]} - {row[4]}\n"
+        f"📍 {row[5]}\n"
+        f"📌 {row[6]}\n"
+        f"─────────────────── "
+        f"Мероприятие {position+1}/{len(events)}"
+    )
+    keyboard = await get_kb_show_event(position, len(events)-1)
+    await callback.message.edit_text(response, reply_markup=keyboard)
+    await callback.answer()
+
 @user_router.callback_query(F.data.startswith("next_event"))
 async def get_next_event(callback: CallbackQuery):
     position = int(callback.data.split("_")[-1]) + 1
@@ -99,7 +116,7 @@ async def get_next_event(callback: CallbackQuery):
 
     data = await get_all_table("schedule")
     await callback.answer()
-    await show_current_event(callback, data, position)
+    await update_menu_events(callback, data, position)
 
 @user_router.callback_query(F.data.startswith("prev_event"))
 async def get_next_event(callback: CallbackQuery):
@@ -108,7 +125,7 @@ async def get_next_event(callback: CallbackQuery):
 
     data = await get_all_table("schedule")
     await callback.answer()
-    await show_current_event(callback, data, position)
+    await update_menu_events(callback, data, position)
 
 @user_router.callback_query(F.data.startswith("sign_up"))
 async def sign_up_event(callback: CallbackQuery):
@@ -121,7 +138,7 @@ async def sign_up_event(callback: CallbackQuery):
         await callback.message.answer(f"Вы успешно записались на мероприятие!")
     else:
         logger.warning(f"Ошибка в записи пользователя {user_id} на мероприятие {event_id}: {result[1]}")
-        await callback.message.answer("Не удалось записаться на мероприятие")
+        await callback.message.answer("Не удалось записаться на мероприятие. Возможно вы уже на него записаны.")
 
     await callback.answer()
     
