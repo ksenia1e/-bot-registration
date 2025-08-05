@@ -1,6 +1,8 @@
 import aiosqlite
+import logging
 
-DB_NAME = "users.db"
+DB_NAME = "database.db"
+logger = logging.getLogger(__name__)
 
 async def init_db():
     async with aiosqlite.connect(DB_NAME) as db:
@@ -10,7 +12,6 @@ async def init_db():
             user_name TEXT,
             full_name TEXT,
             phone TEXT,
-            role TEXT DEFAULT 'user',
             checked_in  INTEGER DEFAULT 0
         )
                          """)
@@ -63,11 +64,26 @@ async def init_db():
                         """)
         await db.commit()
 
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS user_role (
+                user_id INTEGER,
+                role TEXT DEFAULT 'user',
+                UNIQUE (user_id, role)             
+            )
+                        """)
+        await db.commit()
+
 async def add_user(user_id: int, user_name: str, full_name: str, phone: str):
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute("INSERT INTO users (user_id, user_name, full_name, phone) VALUES (?, ?, ?, ?)",
                         (user_id, user_name, full_name, phone)
         )
+        await db.commit()
+
+async def add_user_role(user_id: int, role: str):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("INSERT INTO user_role (user_id, role) VALUES (?, ?)",
+                        (user_id, role))
         await db.commit()
 
 async def if_registered(user_id: int):
@@ -80,7 +96,7 @@ async def if_registered(user_id: int):
     
 async def get_user_role(user_id: int) -> str:
     async with aiosqlite.connect(DB_NAME) as db:
-        cursor = await db.execute("SELECT role FROM users WHERE user_id = ?",
+        cursor = await db.execute("SELECT role FROM user_role WHERE user_id = ?",
                                   (user_id,)
         )
         row = await cursor.fetchone()
@@ -90,19 +106,19 @@ async def get_user_role(user_id: int) -> str:
     
 async def get_users():
     async with aiosqlite.connect(DB_NAME) as db:
-        cursor = await db.execute("SELECT user_id FROM users WHERE role = 'user'")
+        cursor = await db.execute("SELECT user_id FROM user_role WHERE role = 'user'")
         return await cursor.fetchall()
     
 async def add_organizer_(user_id: int, full_name: str):
     async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute("INSERT INTO users (user_id, full_name, role) VALUES (?, ?, 'organizer')",
+        await db.execute("INSERT OR IGNORE INTO users (user_id, full_name) VALUES (?, ?)",
                          (user_id, full_name)
         )
         await db.commit()
 
 async def get_number_of_users_():
     async with aiosqlite.connect(DB_NAME) as db:
-        cursor = await db.execute("SELECT COUNT(*) FROM users WHERE role = 'user'")
+        cursor = await db.execute("SELECT COUNT(*) FROM users INNER JOIN user_role ON users.user_id = user_role.user_id WHERE role = 'user'")
         row = await cursor.fetchone()
         return row[0]
     
@@ -125,19 +141,23 @@ async def set_checked_in(user_id: int):
 
 async def get_organizers():
     async with aiosqlite.connect(DB_NAME) as db:
-        cursor = await db.execute("SELECT user_id, full_name FROM users WHERE role = 'organizer'")
+        cursor = await db.execute("SELECT users.user_id, full_name FROM users INNER JOIN user_role ON users.user_id = user_role.user_id WHERE role = 'organizer'")
         return await cursor.fetchall()
     
 async def delete_organizer_(user_id: int):
     async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute("UPDATE users SET role = 'user' WHERE user_id = ?",
-                         (user_id,)
+        await db.execute("INSERT OR IGNORE INTO user_role (user_id, role) VALUES (?, ?)",
+                        (user_id, "user")
+        )
+        await db.execute(f"DELETE FROM user_role WHERE user_id = ? AND role = 'organizer'",
+                        (user_id,)
         )
         await db.commit()
 
+
 async def get_users_id_name():
     async with aiosqlite.connect(DB_NAME) as db:
-        cursor = await db.execute("SELECT user_id, user_name FROM users WHERE role = 'user'")
+        cursor = await db.execute("SELECT user_id, user_name FROM users INNER JOIN user_role ON users.user_id = user_role.user_id WHERE role = 'user'")
         return await cursor.fetchall()
     
 async def get_schedule():

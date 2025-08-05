@@ -5,7 +5,7 @@ import logging
 
 from keyboards.inline_keyboards import phone_kb, keyboard_user, get_kb_show_event
 from utils import Registration
-from database import add_user, get_all_table, add_user_event
+from database import add_user, get_all_table, add_user_event, add_user_role
 
 user_router = Router()
 logger = logging.getLogger(__name__)
@@ -40,16 +40,25 @@ async def get_phone(message: Message, state: FSMContext):
     await state.update_data(phone=phone)
 
     data = await state.get_data()
-    await add_user(
-        int(data["user_id"]),
-        data["user_name"],
-        data["full_name"],
-        data["phone"]
-    )
-    
-    logger.info(f"Пользователь {message.from_user.id} зарегистрирован с данными: {data}")
-    await message.answer("Вы успешно зарегистрированы!", reply_markup=ReplyKeyboardRemove())
-    await message.answer("Меню", reply_markup=keyboard_user)
+    try:
+        await add_user(
+            int(data["user_id"]),
+            data["user_name"],
+            data["full_name"],
+            data["phone"]
+        )
+        await add_user_role(
+            int(data["user_id"]),
+            "user"
+        )
+
+        logger.info(f"Пользователь {message.from_user.id} зарегистрирован с данными: {data}")
+        await message.answer("Вы успешно зарегистрированы!", reply_markup=ReplyKeyboardRemove())
+        await message.answer("Меню", reply_markup=keyboard_user)
+    except Exception as e:
+        logger.error(f"Ошибка в добавление ползователя: {e}")
+        await message.answer("Ошибка регистрации. Снова нажмите на команду '/start'")
+
     await state.clear()
 
 @user_router.callback_query(F.data == "get_schedule")
@@ -119,7 +128,7 @@ async def sign_up_event(callback: CallbackQuery):
 @user_router.callback_query(F.data == "get_raffle")
 async def get_raffle(callback: CallbackQuery):
     logger.info(f"Пользователь {callback.from_user.id} запрашивает информацию о розыгрыше")
-    data = get_all_table("raffle")
+    data = await get_all_table("raffle")
     response = "\n".join(
         f"🏆 **{row[1]}**\n"
         f"📅 {row[2]}\n"
