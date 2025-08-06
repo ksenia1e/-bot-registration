@@ -122,20 +122,20 @@ async def get_number_of_users_():
         row = await cursor.fetchone()
         return row[0]
     
-async def get_checked_in(user_id: int):
+async def get_checked_in(user_id: int, event_id: int):
     async with aiosqlite.connect(DB_NAME) as db:
-        cursor = await db.execute("SELECT checked_in FROM user_event WHERE user_id = ?",
-                         (user_id,)
+        cursor = await db.execute("SELECT checked_in FROM user_event WHERE user_id = ? and event_id = ?",
+                         (user_id, event_id)
         )
         row = await cursor.fetchone()
         if row is None:
             return None
         return row[0]
     
-async def set_checked_in(user_id: int):
+async def set_checked_in(user_id: int, event_id: int):
     async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute("UPDATE user_event SET checked_in = 1 WHERE user_id = ?",
-                         (user_id,)
+        await db.execute("UPDATE user_event SET checked_in = 1 WHERE user_id = ? and event_id = ?",
+                         (user_id, event_id)
         )
         await db.commit()
 
@@ -153,7 +153,6 @@ async def delete_organizer_(user_id: int):
                         (user_id,)
         )
         await db.commit()
-
 
 async def get_users_id_name():
     async with aiosqlite.connect(DB_NAME) as db:
@@ -213,3 +212,24 @@ async def get_my_events(user_id: int):
                                   (user_id,)
         )
         return await cursor.fetchall()
+    
+async def set_event_prize(event_id: int, raffle_id: int):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("INSERT OR IGNORE INTO event_prize (event_id, prize_id) VALUES (?, ?)",
+                         (event_id, raffle_id)
+        )
+        return await db.commit()
+    
+async def get_raffle_on_event(event_id: int):
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("SELECT id, name, data, start_time, end_time, prizes FROM raffle INNER JOIN event_prize ON raffle.id = event_prize.prize_id WHERE event_prize.event_id = ?",
+                                  (event_id,)
+        )
+        return await cursor.fetchall()
+    
+async def get_event_by_id(event_id: int):
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("SELECT name FROM schedule WHERE id = ?",
+                                  (event_id,)
+        )
+        return await cursor.fetchone()

@@ -48,9 +48,6 @@ builder_user.row(
     InlineKeyboardButton(text="Получить расписание", callback_data="get_schedule")
 )
 builder_user.row(
-    InlineKeyboardButton(text="Получить информацию о розыгрыше", callback_data="get_raffle")
-)
-builder_user.row(
     InlineKeyboardButton(text="Мой QR-код", callback_data="get_qr")
 )
 keyboard_user = builder_user.as_markup()

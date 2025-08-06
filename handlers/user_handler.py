@@ -8,8 +8,8 @@ from aiogram.types.input_file import BufferedInputFile
 
 from bot import bot_username
 from keyboards.inline_keyboards import phone_kb, keyboard_user, get_kb_show_event, get_kb_show_my_event
-from utils import Registration, output_events
-from database import add_user, get_all_table, add_user_event, add_user_role, get_my_events
+from utils import Registration, output_events, output_my_event
+from database import add_user, get_all_table, add_user_event, add_user_role, get_my_events, get_raffle_on_event
 
 user_router = Router()
 logger = logging.getLogger(__name__)
@@ -82,7 +82,9 @@ async def get_schedule(callback: CallbackQuery):
 async def show_current_event(callback: CallbackQuery, events: list, position: int):
     logger.info(f"Вывод меропртиятия с позицией: {position}")
 
-    response = output_events(events, position)
+    raffle = await get_raffle_on_event(events[position][0])
+    response = output_events(events, raffle, position)
+
     keyboard = await get_kb_show_event(position, len(events)-1)
     await callback.message.answer(response, reply_markup=keyboard)
     await callback.answer()
@@ -90,7 +92,9 @@ async def show_current_event(callback: CallbackQuery, events: list, position: in
 async def update_menu_events(callback: CallbackQuery, events: list, position: int):
     logger.info(f"Обновление меню мероприятий")
 
-    response = output_events(events, position)
+    raffle = await get_raffle_on_event(events[position][0])
+    response = output_events(events, raffle, position)
+    
     keyboard = await get_kb_show_event(position, len(events)-1)
     await callback.message.edit_text(response, reply_markup=keyboard)
     await callback.answer()
@@ -127,22 +131,6 @@ async def sign_up_event(callback: CallbackQuery):
         await callback.message.answer("Не удалось записаться на мероприятие. Возможно вы уже на него записаны.")
 
     await callback.answer()
-    
-@user_router.callback_query(F.data == "get_raffle")
-async def get_raffle(callback: CallbackQuery):
-    logger.info(f"Пользователь {callback.from_user.id} запрашивает информацию о розыгрыше")
-    data = await get_all_table("raffle")
-    response = "\n".join(
-        f"🏆 **{row[1]}**\n"
-        f"📅 {row[2]}\n"
-        f"⏰ {row[3]} – {row[4]}\n"
-        f"💰 Призы: {row[5]}\n"
-        f"────────────────────"
-        for row in data
-    )
-
-    await callback.message.answer(response, reply_markup=keyboard_user)
-    await callback.answer()
 
 @user_router.callback_query(F.data == "get_qr")
 async def show_my_events(callback: CallbackQuery):
@@ -157,7 +145,7 @@ async def show_my_events(callback: CallbackQuery):
         return
     
     position = 0
-    response = output_events(events, position)
+    response = output_my_event(events, position)
     event_id = events[position][0]
     keyboard = await get_kb_show_my_event(position, len(events) - 1, event_id)
     logger.info(f"Вывод меропртиятия с позицией: {position}")
@@ -168,7 +156,7 @@ async def show_my_events(callback: CallbackQuery):
 async def update_menu_my_events(callback: CallbackQuery, position: int, events: list):
     logger.info(f"Вывод меропртиятия с позицией: {position}")
     
-    response = output_events(events, position)
+    response = output_my_event(events, position)
     event_id = events[position][0]
     keyboard = await get_kb_show_my_event(position, len(events) - 1, event_id)
     await callback.message.edit_text(response, reply_markup=keyboard)

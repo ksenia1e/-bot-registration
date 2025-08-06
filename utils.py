@@ -20,10 +20,33 @@ async def set_bot_commands(bot):
 async def get_random_user(users):
     return random.choice(users)
 
-def get_values(dict: dict):
-    return [list(d.values()) for d in dict]
+def get_values(data: list[dict]):
+    return [[v for k, v in item.items() if k != 'ID мероприятия'] for item in data]
 
-def output_events(events: list, position: int):
+def output_events(events: list, raffle: list, position: int):
+    event_row = events[position]
+    event_text = (
+        f"🎯 **{event_row[1]}**\n"
+        f"📅 {event_row[2]}\n"
+        f"🕒 {event_row[3]} - {event_row[4]}\n"
+        f"📍 {event_row[5]}\n"
+        f"📌 {event_row[6]}\n"
+        f"───────────────────\n"
+        f"Мероприятие {position+1}/{len(events)}\n\n"
+    )
+
+    raffle_text = "\n".join(
+        f"🏆 **{row[1]}**\n"
+        f"📅 {row[2]}\n"
+        f"⏰ {row[3]} – {row[4]}\n"
+        f"💰 Призы: {row[5]}\n"
+        f"────────────────────"
+        for row in raffle
+    )
+
+    return event_text + "\n🎁 Розыгрыши:\n" + raffle_text
+
+def output_my_event(events: list, position: int):
     row = events[position]
     response = (
         f"🎯 **{row[1]}**\n"
