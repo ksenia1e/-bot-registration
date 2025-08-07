@@ -116,11 +116,14 @@ async def add_organizer_(user_id: int, full_name: str):
         )
         await db.commit()
 
-async def get_number_of_users_():
+async def get_number_of_users_on_event(event_id: int):
     async with aiosqlite.connect(DB_NAME) as db:
-        cursor = await db.execute("SELECT COUNT(*) FROM users INNER JOIN user_role ON users.user_id = user_role.user_id WHERE role = 'user'")
-        row = await cursor.fetchone()
-        return row[0]
+        try:
+            cursor = await db.execute("SELECT COUNT(*) FROM user_event WHERE event_id = ?",
+                                    (event_id,))
+            return await cursor.fetchone()
+        except Exception as e:
+            logger.error(f"Ошибка в функции get_number_of_users_on_event(): {e}")
     
 async def get_checked_in(user_id: int, event_id: int):
     async with aiosqlite.connect(DB_NAME) as db:
@@ -187,7 +190,7 @@ async def add_raffle(id: int, name: str, data: str, start_time: str, end_time: s
 
 async def clear_table(table_name: str):
     async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute(f"DELETE FROM {table_name}")
+        await db.execute(f"DELETE FROM{table_name}")
         await db.commit()
 
 async def add_user_event(user_id: int, event_id: int):
@@ -203,8 +206,11 @@ async def add_user_event(user_id: int, event_id: int):
         
 async def get_all_table(table_name: str):
     async with aiosqlite.connect(DB_NAME) as db:
-        cursor = await db.execute(f"SELECT * FROM {table_name}")
-        return await cursor.fetchall()
+        try:
+            cursor = await db.execute(f"SELECT * FROM {table_name}")
+            return await cursor.fetchall()
+        except Exception as e:
+            logger.error(f"Ошибка в выводе содержимого таблицы {table_name}: {e}")
     
 async def get_my_events(user_id: int):
     async with aiosqlite.connect(DB_NAME) as db:

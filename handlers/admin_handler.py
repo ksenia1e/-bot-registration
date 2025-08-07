@@ -9,7 +9,7 @@ from utils import AddOrganizer, get_random_user, get_values
 from google_sheets import get_all_data
 from bot import bot
 from keyboards.inline_keyboards import keyboard_admin, get_kb_show_organozers
-from database import get_user_role, get_users, add_organizer_, get_number_of_users_, set_event_prize, get_all_table
+from database import get_user_role, get_users, add_organizer_, get_number_of_users_on_event, set_event_prize, get_all_table
 from database import get_organizers, delete_organizer_, get_users_id_name, get_schedule, get_raffle, add_raffle, add_schedule, clear_table, add_user_role
 
 admin_router = Router()
@@ -87,10 +87,33 @@ async def send_newsletter(callback: CallbackQuery):
 
 @admin_router.callback_query(F.data == "count_users")
 async def get_number_of_users(callback: CallbackQuery):
-    num = await get_number_of_users_()
-    await callback.message.answer(f"Количество зарегистрированных: {num}")
-    logger.info(f"Админ {callback.from_user.id} запросил количество пользователей: {num}")
-    await callback.answer()
+    try:
+        events = await get_all_table("schedule")
+        response = []
+
+        if not events:
+            logger.info("Таблица schedule пуста")
+            callback.message.answer("Пока не проводится никаких мероприятий")
+            callback.answer()
+
+        for row in events:
+
+            event_id = row[0]
+            event_name = row[1]
+            num = (await get_number_of_users_on_event(event_id))[0]
+
+            response.append(
+                f"На мероприятие {event_name} количество зарегистрированных: {num} \n"
+                f"     -------------------     "
+            )
+
+        result = "\n".join(response)
+        await callback.answer(result, show_alert=True)
+        logger.info(f"Админ {callback.from_user.id} запросил количество пользователей: {num}")
+        await callback.answer()
+
+    except Exception as e:
+        logger.error(f"Ошибка в функции get_number_of_users(): {e}")
 
 @admin_router.callback_query(F.data == "delete_org")
 async def show_organizers(callback: CallbackQuery):
