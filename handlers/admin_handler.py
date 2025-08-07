@@ -5,10 +5,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 import logging
 
-from utils import AddOrganizer, get_random_user, get_values
+from utils import AddOrganizer, get_random_user, get_values, Broadcast
 from google_sheets import get_all_data
 from bot import bot
-from keyboards.inline_keyboards import keyboard_admin, get_kb_show_organozers
+from keyboards.inline_keyboards import keyboard_admin, get_kb_show_organozers, broadcast_yes_no_kb, broadcast_builder_send_cancel_kb
 from database import get_user_role, get_users, add_organizer_, get_number_of_users_on_event, set_event_prize, get_all_table
 from database import get_organizers, delete_organizer_, get_users_id_name, get_schedule, get_raffle, add_raffle, add_schedule, clear_table, add_user_role
 
@@ -68,22 +68,90 @@ async def add_full_name(message: Message, state: FSMContext):
         logger.error(f"Ошибка при добавлении организатора: {e}")
     await state.clear()
 
+temp_data = {}
 
 @admin_router.callback_query(F.data == "broadcast")
-async def send_newsletter(callback: CallbackQuery):
-    text = "Всех приветствую, для быстрой регистрации на мероприятии покажите QR-код, который можно получить по кнопке ниже"
-    users = await get_users()
+async def send_newsletter(callback: CallbackQuery, state: FSMContext):
+    try:
+        logger.info(f"Админ {callback.from_user.id} запрашивает рассылку")
+        await callback.message.answer("Отправьте текст рассылки")
+        await state.set_state(Broadcast.waiting_for_photo_confirm)
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Ошибка в функции send_newsletter(): {e}")
 
-    logger.info(f"Админ {callback.from_user.id} начал рассылку для {len(users)} пользователей")
+@admin_router.message(Broadcast.waiting_for_photo_confirm, F.text)
+async def get_broadcast_content(message: Message, state: FSMContext):
+    try:
+        logger.info("В рассылку добавлен текст")
+        await state.update_data(broadcast_text=message.text.strip())
+        await message.answer("Необходимо ли отправить прикрепить фото к сообщению?", reply_markup=broadcast_yes_no_kb)
+    except Exception as e:
+        logger.error(F"Ошибка в функции get_broadcast_content(): {e}")
 
-    # for row in users:
-    #     try:
-    #         await bot.send_message(chat_id=row[0], text=text, reply_markup=keyboard_qr)
-    #     except Exception as e:
-    #         logger.warning(f"Ошибка при отправке пользователю {row[0]}: {e}")
+@admin_router.callback_query(F.data == "image_necessary")
+async def attach_image(callback: CallbackQuery, state: FSMContext):
+    try:
+        await callback.message.answer("Отправьте изображение")
+        await state.set_state(Broadcast.waiting_for_photo)
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Ошибка в функции attach_image(): {e}")
 
-    await callback.answer("Рассылка завершена.")
-    logger.info(f"Рассылка завершена админом {callback.from_user.id}")
+@admin_router.message(Broadcast.waiting_for_photo)
+async def attach_image(message: Message, state: FSMContext):
+    try:
+        logger.info(f"В рассылку будет добавлено фото")
+        photo = message.photo[-1]
+        await state.update_data(photo_id=photo.file_id)
+        
+        data = await state.get_data()
+        await bot.send_photo(
+            chat_id=message.from_user.id,
+            photo=data["photo_id"],
+            caption=data["broadcast_text"]
+        )
+        await message.answer("Фотография получена! Подтвердите отправку", reply_markup=broadcast_builder_send_cancel_kb)
+    except Exception as e:
+        logger.error(f"Ошибка в функции attach_image(): {e}")
+
+@admin_router.callback_query(F.data == "image_not_necessary")
+async def send_broadcast_onlytext(callback: CallbackQuery):
+    logger.info("В рассылку будет только текст")
+    await callback.message.answer("Отправлено будет только сообщение без фотографии! Подтвердите отправку", reply_markup=broadcast_builder_send_cancel_kb)
+    await callback.answer()
+
+@admin_router.callback_query(F.data == "send_broadcast")
+async def send_broadcast(callback: CallbackQuery, state: FSMContext):
+    try:
+        users = await get_users()
+        logger.info(f"Админ {callback.from_user.id} начал рассылку для {len(users)} пользователей")
+
+        data = await state.get_data()
+
+        if "photo_id" in data:
+            for row in users:
+                try:
+                    await bot.send_photo(
+                        chat_id=row[0],
+                        photo=data["photo_id"],
+                        caption=data["broadcast_text"]
+                    )
+                except Exception as e:
+                    logger.warning(f"Ошибка при отправке пользователю с ID {row[0]}: {e}")
+
+        else:
+            for row in users:
+                try:
+                    await bot.send_message(chat_id=row[0], text=data["broadcast_text"])
+                except Exception as e:
+                    logger.warning(f"Ошибка при отправке пользователю с ID {row[0]}: {e}")
+
+        await callback.message.answer("Рассылка успешко завершена!")
+        await callback.answer()
+        logger.info(f"Админ {callback.from_user.id} успешно завершил рассылку")
+    except Exception as e:
+        logger.error(f"Ошибка в функции send_broadcast(): {e}")
 
 @admin_router.callback_query(F.data == "count_users")
 async def get_number_of_users(callback: CallbackQuery):

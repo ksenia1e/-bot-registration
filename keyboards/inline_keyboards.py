@@ -1,4 +1,4 @@
-from aiogram.types import InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 builder_admin = InlineKeyboardBuilder()
@@ -87,3 +87,13 @@ async def get_kb_show_my_event(position:int, max_position: int, event_id: int):
         callback_data=f"get_qr_{event_id}"
     )
     return builder.as_markup()
+
+
+broadcast_builder_yes_no = InlineKeyboardBuilder()
+broadcast_builder_yes_no.button(text="Да", callback_data="image_necessary")
+broadcast_builder_yes_no.button(text="Нет", callback_data="image_not_necessary")
+broadcast_yes_no_kb = broadcast_builder_yes_no.as_markup()
+
+broadcast_builder_send_cancel = InlineKeyboardBuilder()
+broadcast_builder_send_cancel.button(text="Отправить", callback_data="send_broadcast")
+broadcast_builder_send_cancel_kb = broadcast_builder_send_cancel.as_markup()

@@ -10,6 +10,11 @@ class AddOrganizer(StatesGroup):
     waiting_for_user_id = State()
     waiting_for_full_name = State()
 
+class Broadcast(StatesGroup):
+    waiting_for_photo = State()
+    waiting_for_photo_confirm = State()
+    waiting_for_confirmation = State()
+
 async def set_bot_commands(bot):
     commands = [
         BotCommand(command="start", description="Начать работу"),
