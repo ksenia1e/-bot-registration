@@ -6,10 +6,10 @@ from io import BytesIO
 import qrcode
 from aiogram.types.input_file import BufferedInputFile
 
-from bot import bot_username
-from keyboards.inline_keyboards import phone_kb, keyboard_user, get_kb_show_event, get_kb_show_my_event
-from utils import Registration, output_events, output_my_event
-from database import add_user, get_all_table, add_user_event, add_user_role, get_my_events, get_raffle_on_event
+from bot import bot_username, bot, technical_support_chat, speakers_chat
+from keyboards.inline_keyboards import phone_kb, keyboard_user, get_kb_show_event, get_kb_show_my_event, get_kb_show_speakers
+from utils import Registration, output_events, output_my_event, TechSupport, AskSpeaker
+from database import add_user, get_all_table, add_user_event, add_user_role, get_my_events, get_raffle_on_event, get_user_role
 
 user_router = Router()
 logger = logging.getLogger(__name__)
@@ -196,3 +196,68 @@ async def generate_qr(callback: CallbackQuery):
     await callback.answer()
 
     logger.info(f"QR-код отправлен пользователю {user_id}")
+
+@user_router.callback_query(F.data == "technical_support")
+async def get_message_for_technical_support(callback: CallbackQuery, state: FSMContext):
+    try:
+        user_id = callback.from_user.id
+        logger.info(f"Пользователь {user_id} запрашивает отправку вопроса в техподдержку")
+
+        await callback.message.answer("Отправьте сообщение для техподдержки")
+        await state.set_state(TechSupport.waiting_for_message)
+        
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Ошибка в функции get_message_for_technical_support(): {e}")
+
+@user_router.message(TechSupport.waiting_for_message)
+async def send_message_to_technical_support(message: Message, state: FSMContext):
+    try:
+        user_id = message.from_user.id
+        user_role = await get_user_role(user_id)
+
+        response = f'Вопрос от <a href="tg://user?id={user_id}">{user_role}</a>:\n{message.text}'
+
+        await bot.send_message(chat_id=technical_support_chat, text=response, parse_mode="HTML")
+        await message.answer("Сообщение в техподдержку было успешно отправлено!")
+
+        await state.clear()
+        logger.info(f"Пользователь с ID {user_id} успешно отправил сообщение в техподдержку")
+    except Exception as e:
+        logger.error(f"Ошибка в функции send_message_to_technical_support(): {e}")
+
+@user_router.callback_query(F.data == "ask_speaker")
+async def show_speakers(callback: CallbackQuery):
+    try:
+        logger.info(f"Пользователь с ID {callback.from_user.id} запрашивает отпрвку вопроса спикеру")
+
+        speakers = await get_all_table("speakers")
+        kb = await get_kb_show_speakers(speakers)
+        await callback.message.answer("Выберете спикера для обращения:", reply_markup=kb)
+
+    except Exception as e:
+        logger.error(f"Ошибка в функции show_speakers(): {e}")
+
+@user_router.callback_query(F.data.startswith("speak:"))
+async def ask_speaker(callback: CallbackQuery, state: FSMContext):
+    try:
+        _, speaker_id, speaker_name = callback.data.split(":", 2)
+        logger.info(f"Вопрос спикеру с ID {speaker_id}")
+        await state.update_data(speaker_name=speaker_name)
+
+        await callback.message.answer("Отправьте вопрос")
+        await state.set_state(AskSpeaker.waiting_for_message)
+        await callback.answer()
+
+    except Exception as e:
+        logger.error(f"Ошибка в функции ask_speaker(): {e}")
+
+@user_router.message(AskSpeaker.waiting_for_message)
+async def get_question(message: Message, state: FSMContext):
+    try:
+        data = await state.get_data()
+
+        await bot.send_message(chat_id=speakers_chat, text=f"Вопрос к спикеру {data["speaker_name"]}:\n{message.text}")
+        await message.answer("Вопрос к спикеры был успешно отправлен")
+    except Exception as e:
+        logger.error(f"Ошибка в функции get_question(): {e}")

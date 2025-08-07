@@ -73,6 +73,14 @@ async def init_db():
                         """)
         await db.commit()
 
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS speakers (
+                id INTEGER PRIMARY KEY,
+                full_name TEXT
+            )  
+                        """)
+        await db.commit()
+
 async def add_user(user_id: int, user_name: str, full_name: str, phone: str):
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute("INSERT INTO users (user_id, user_name, full_name, phone) VALUES (?, ?, ?, ?)",
@@ -239,3 +247,10 @@ async def get_event_by_id(event_id: int):
                                   (event_id,)
         )
         return await cursor.fetchone()
+    
+async def add_speaker(id: int, full_name: str):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("INSERT INTO speakers (id, full_name) VALUES (?, ?)",
+                   (id, full_name)
+        )
+        return await db.commit()

@@ -50,6 +50,12 @@ builder_user.row(
 builder_user.row(
     InlineKeyboardButton(text="Мой QR-код", callback_data="get_qr")
 )
+builder_user.row(
+    InlineKeyboardButton(text="Написать в техподдержку", callback_data="technical_support")
+)
+builder_user.row(
+    InlineKeyboardButton(text="Задать вопрос спикеру", callback_data="ask_speaker")
+)
 keyboard_user = builder_user.as_markup()
 
 async def get_kb_show_event(position: int, max_position: int):
@@ -97,3 +103,14 @@ broadcast_yes_no_kb = broadcast_builder_yes_no.as_markup()
 broadcast_builder_send_cancel = InlineKeyboardBuilder()
 broadcast_builder_send_cancel.button(text="Отправить", callback_data="send_broadcast")
 broadcast_builder_send_cancel_kb = broadcast_builder_send_cancel.as_markup()
+
+async def get_kb_show_speakers(speakers):
+    builder = InlineKeyboardBuilder()
+
+    for id, full_name in speakers:
+        builder.button(
+            text=full_name,
+            callback_data=f"speak:{id}:{full_name}"
+        )
+    builder.adjust(1)
+    return builder.as_markup()

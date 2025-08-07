@@ -15,6 +15,12 @@ class Broadcast(StatesGroup):
     waiting_for_photo_confirm = State()
     waiting_for_confirmation = State()
 
+class TechSupport(StatesGroup):
+    waiting_for_message = State()
+
+class AskSpeaker(StatesGroup):
+    waiting_for_message = State()
+
 async def set_bot_commands(bot):
     commands = [
         BotCommand(command="start", description="Начать работу"),
