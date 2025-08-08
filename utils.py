@@ -26,6 +26,15 @@ class CreateNoteNetworkingChat(StatesGroup):
     waiting_for_description = State()
     waiting_for_photo = State()
 
+class MessageLike:
+    def __init__(self, callback):
+        self.chat = callback.message.chat
+        self.from_user = callback.from_user
+        self.answer = callback.message.answer
+        self.bot = callback.bot
+        self.message_id = callback.message.message_id
+        self.text = "/start"  # добавляем text, если хендлер его требует
+
 async def set_bot_commands(bot):
     commands = [
         BotCommand(command="start", description="Начать работу"),

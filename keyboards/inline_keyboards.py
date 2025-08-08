@@ -89,6 +89,7 @@ broadcast_yes_no_kb = broadcast_builder_yes_no.as_markup()
 
 broadcast_builder_send_cancel = InlineKeyboardBuilder()
 broadcast_builder_send_cancel.button(text="Отправить", callback_data="send_broadcast")
+broadcast_builder_send_cancel.button(text="Отмена", callback_data="cancel_broadcast")
 broadcast_builder_send_cancel_kb = broadcast_builder_send_cancel.as_markup()
 
 async def get_kb_show_speakers(speakers):
@@ -123,4 +124,5 @@ networking_yes_no_kb = networking_builder_yes_no.as_markup()
 
 networking_builder_send_cancel = InlineKeyboardBuilder()
 networking_builder_send_cancel.button(text="Отправить", callback_data="send_note")
+networking_builder_send_cancel.button(text="Отмена", callback_data="cancel_note")
 networking_send_cancel_kb = networking_builder_send_cancel.as_markup()

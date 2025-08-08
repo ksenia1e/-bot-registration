@@ -9,8 +9,9 @@ from aiogram.types.input_file import BufferedInputFile
 from bot import bot_username, bot, technical_support_chat, speakers_chat, networking_chat_name, networking_chat_id
 from keyboards.inline_keyboards import phone_kb, keyboard_user, get_kb_show_event, get_kb_show_my_event, get_kb_show_speakers, networking_builder_link_note_kb, networking_field_kb
 from keyboards.inline_keyboards import networking_yes_no_kb, networking_send_cancel_kb
-from utils import Registration, output_events, output_my_event, TechSupport, AskSpeaker, CreateNoteNetworkingChat
+from utils import Registration, output_events, output_my_event, TechSupport, AskSpeaker, CreateNoteNetworkingChat, MessageLike
 from database import add_user, get_all_table, add_user_event, add_user_role, get_my_events, get_raffle_on_event, get_user_role
+from .start_handler import start_handler
 
 user_router = Router()
 logger = logging.getLogger(__name__)
@@ -235,6 +236,7 @@ async def show_speakers(callback: CallbackQuery):
         speakers = await get_all_table("speakers")
         kb = await get_kb_show_speakers(speakers)
         await callback.message.answer("Выберете спикера для обращения:", reply_markup=kb)
+        await callback.answer()
 
     except Exception as e:
         logger.error(f"Ошибка в функции show_speakers(): {e}")
@@ -258,8 +260,11 @@ async def get_question(message: Message, state: FSMContext):
     try:
         data = await state.get_data()
 
-        await bot.send_message(chat_id=speakers_chat, text=f"Вопрос к спикеру {data["speaker_name"]}:\n{message.text}")
-        await message.answer("Вопрос к спикеры был успешно отправлен")
+        await bot.send_message(
+                            chat_id=speakers_chat, 
+                            text=f"Вопрос к спикеру {data["speaker_name"]} от <a href='tg://user?id={message.from_user.id}'>{message.from_user.full_name}</a>:\n{message.text}",
+                            parse_mode="HTML")
+        await message.answer("Вопрос к спикеру был успешно отправлен")
     except Exception as e:
         logger.error(f"Ошибка в функции get_question(): {e}")
 
@@ -434,3 +439,14 @@ async def send_note(callback: CallbackQuery, state: FSMContext):
         await state.clear()
     except Exception as e:
         logger.error(f"Ошибка в функции send_note(): {e}")
+
+@user_router.callback_query(F.data == "cancel_note")
+async def cancel_note(callback: CallbackQuery, state: FSMContext):
+    try:
+        logger.info("Отмена отправки карточки")
+        await state.clear()
+        
+        await start_handler(MessageLike(callback), state)
+        await callback.answer("❌ Отправка карточки отменена")
+    except Exception as e:
+        logger.error(f"Ошибка в функции cancel_note(): {e}")

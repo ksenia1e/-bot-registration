@@ -45,7 +45,7 @@ async def start_handler(message: Message, state: FSMContext):
             logger.info(f"Начата регистрация нового пользователя {user.id}")
     else:
         if await if_registered(user.id):
-            logger.info(f"Вывод меню для пользоватедя {user.id}")
+            logger.info(f"Вывод меню для пользователя {user.id}")
             await message.answer("Меню", reply_markup=keyboard_user)
         else:
             await state.update_data(user_id=user.id, user_name=user.username)

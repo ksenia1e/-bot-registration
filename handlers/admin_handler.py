@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
 import logging
 
-from utils import AddOrganizer, get_random_user, get_values, Broadcast
+from utils import AddOrganizer, get_random_user, get_values, Broadcast, MessageLike
 from google_sheets import get_all_data
 from bot import bot
 from keyboards.inline_keyboards import keyboard_admin, get_kb_show_organozers, broadcast_yes_no_kb, broadcast_builder_send_cancel_kb
@@ -124,6 +124,17 @@ async def send_broadcast_onlytext(callback: CallbackQuery,  state: FSMContext):
     await callback.message.answer("Отправлено будет только сообщение без фотографии! Подтвердите отправку", reply_markup=broadcast_builder_send_cancel_kb)
     await callback.answer()
 
+@admin_router.callback_query(F.data == "cancel_broadcast")
+async def cancel_broadcast(callback: CallbackQuery, state: FSMContext):
+    try:
+        logger.info("Отмена рассылки")
+        await state.clear()
+        
+        await admin_panel(MessageLike(callback))
+        await callback.answer("❌ Рассылка отменена")
+    except Exception as e:
+        logger.error(f"Ошибка в функции cancel_broadcast(): {e}")
+    
 @admin_router.callback_query(F.data == "send_broadcast")
 async def send_broadcast(callback: CallbackQuery, state: FSMContext):
     try:
