@@ -3,23 +3,14 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 builder_admin = InlineKeyboardBuilder()
 builder_admin.row(
-    InlineKeyboardButton(text="Разослать сообщение", callback_data="broadcast")
-)
-builder_admin.row(
-    InlineKeyboardButton(text="Кол-во зарегистрированных", callback_data="count_users")
-)
-builder_admin.row(
-    InlineKeyboardButton(text="Добавить организатора", callback_data="add_org")
-)
-builder_admin.row(
-    InlineKeyboardButton(text="Удалить организатора", callback_data="delete_org")
-)
-builder_admin.row(
-    InlineKeyboardButton(text="Провести розыгрыш", callback_data="hold_draw")
-)
-builder_admin.row(
+    InlineKeyboardButton(text="Разослать сообщение", callback_data="broadcast"),
+    InlineKeyboardButton(text="Количество зарегистрированных", callback_data="count_users"),
+    InlineKeyboardButton(text="Добавить организатора", callback_data="add_org"),
+    InlineKeyboardButton(text="Удалить организатора", callback_data="delete_org"),
+    InlineKeyboardButton(text="Провести розыгрыш", callback_data="hold_draw"),
     InlineKeyboardButton(text="Синхронизировать базу данных и гугл таблицы", callback_data="synchronization")
 )
+builder_admin.adjust(1)
 keyboard_admin = builder_admin.as_markup()
 
 
@@ -45,17 +36,13 @@ async def get_kb_show_organozers(organizers):
 
 builder_user = InlineKeyboardBuilder()
 builder_user.row(
-    InlineKeyboardButton(text="Получить расписание", callback_data="get_schedule")
+    InlineKeyboardButton(text="Получить расписание", callback_data="get_schedule"),
+    InlineKeyboardButton(text="Мой QR-код", callback_data="get_qr"),
+    InlineKeyboardButton(text="Написать в техподдержку", callback_data="technical_support"),
+    InlineKeyboardButton(text="Задать вопрос спикеру", callback_data="ask_speaker"),
+    InlineKeyboardButton(text="Нетворкинг чат", callback_data="networking_chat")
 )
-builder_user.row(
-    InlineKeyboardButton(text="Мой QR-код", callback_data="get_qr")
-)
-builder_user.row(
-    InlineKeyboardButton(text="Написать в техподдержку", callback_data="technical_support")
-)
-builder_user.row(
-    InlineKeyboardButton(text="Задать вопрос спикеру", callback_data="ask_speaker")
-)
+builder_user.adjust(1)
 keyboard_user = builder_user.as_markup()
 
 async def get_kb_show_event(position: int, max_position: int):
@@ -114,3 +101,26 @@ async def get_kb_show_speakers(speakers):
         )
     builder.adjust(1)
     return builder.as_markup()
+
+networking_builder_link_note = InlineKeyboardBuilder()
+networking_builder_link_note.button(text="Получить ссылку", callback_data="get_link")
+networking_builder_link_note.button(text="Создать карточку", callback_data="create_note")
+networking_builder_link_note_kb = networking_builder_link_note.as_markup()
+
+networking_builder_field = InlineKeyboardBuilder()
+networking_builder_field.row(
+    InlineKeyboardButton(text="IT", callback_data="field:IT"),
+    InlineKeyboardButton(text="Медицина", callback_data="field:Медицина"),
+    InlineKeyboardButton(text="Финансы", callback_data="field:Финансы"),
+    InlineKeyboardButton(text="Строительство", callback_data="field:Строительство")
+).adjust(2)
+networking_field_kb = networking_builder_field.as_markup()
+
+networking_builder_yes_no = InlineKeyboardBuilder()
+networking_builder_yes_no.button(text="Да", callback_data="image_necessary_net")
+networking_builder_yes_no.button(text="Нет", callback_data="image_not_necessary_net")
+networking_yes_no_kb = networking_builder_yes_no.as_markup()
+
+networking_builder_send_cancel = InlineKeyboardBuilder()
+networking_builder_send_cancel.button(text="Отправить", callback_data="send_note")
+networking_send_cancel_kb = networking_builder_send_cancel.as_markup()

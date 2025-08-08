@@ -21,6 +21,11 @@ class TechSupport(StatesGroup):
 class AskSpeaker(StatesGroup):
     waiting_for_message = State()
 
+class CreateNoteNetworkingChat(StatesGroup):
+    waiting_for_full_name = State()
+    waiting_for_description = State()
+    waiting_for_photo = State()
+
 async def set_bot_commands(bot):
     commands = [
         BotCommand(command="start", description="Начать работу"),

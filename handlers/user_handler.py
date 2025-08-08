@@ -6,9 +6,10 @@ from io import BytesIO
 import qrcode
 from aiogram.types.input_file import BufferedInputFile
 
-from bot import bot_username, bot, technical_support_chat, speakers_chat
-from keyboards.inline_keyboards import phone_kb, keyboard_user, get_kb_show_event, get_kb_show_my_event, get_kb_show_speakers
-from utils import Registration, output_events, output_my_event, TechSupport, AskSpeaker
+from bot import bot_username, bot, technical_support_chat, speakers_chat, networking_chat_name, networking_chat_id
+from keyboards.inline_keyboards import phone_kb, keyboard_user, get_kb_show_event, get_kb_show_my_event, get_kb_show_speakers, networking_builder_link_note_kb, networking_field_kb
+from keyboards.inline_keyboards import networking_yes_no_kb, networking_send_cancel_kb
+from utils import Registration, output_events, output_my_event, TechSupport, AskSpeaker, CreateNoteNetworkingChat
 from database import add_user, get_all_table, add_user_event, add_user_role, get_my_events, get_raffle_on_event, get_user_role
 
 user_router = Router()
@@ -261,3 +262,175 @@ async def get_question(message: Message, state: FSMContext):
         await message.answer("Вопрос к спикеры был успешно отправлен")
     except Exception as e:
         logger.error(f"Ошибка в функции get_question(): {e}")
+
+@user_router.callback_query(F.data == "networking_chat")
+async def networking_chat(callback: CallbackQuery):
+    try:
+        logger.info(f"Пользователь с ID {callback.from_user.id} переходит в нетворкинг чат")
+
+        await callback.message.answer("Выберите опцию",reply_markup=networking_builder_link_note_kb)
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Ошибка в функции networking_chat(): {e}")
+
+@user_router.callback_query(F.data == "get_link")
+async def get_link_on_networking_chat(callback: CallbackQuery):
+    try:
+        logger.info(f"Пользователь с ID {callback.from_user.id} запрошивает ссылку на нетворкинг чат")
+
+        await callback.message.answer(f'[Ссылка на чат](https://t.me/{networking_chat_name})', parse_mode="MarkdownV2")
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Ошибка в функции get_link_on_networking_chat(): {e}")
+
+@user_router.callback_query(F.data == "create_note")
+async def create_note_for_networking_chat(callback: CallbackQuery, state: FSMContext):
+    try:
+        logger.info(f"Пользователь c ID {callback.from_user.id} начинает создание карточки")
+
+        await callback.message.answer("Введите ФИО")
+        await state.set_state(CreateNoteNetworkingChat.waiting_for_full_name)
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Ошибка в функции create_note_for_networking_chat(): {e}")
+
+@user_router.message(CreateNoteNetworkingChat.waiting_for_full_name)
+async def get_full_name_for_name(message: Message, state: FSMContext):
+    try:
+        logger.info("Получено ФИО пользователя")
+
+        await state.update_data(full_name=message.text)
+        await message.answer("Выберете сферу вашей деятельности:", reply_markup=networking_field_kb)
+    except Exception as e:
+        logger.error(f"Ошибка в функции get_full_name_for_name(): {e}")
+
+@user_router.callback_query(F.data.startswith("field"))
+async def get_field_networking_chat(callback: CallbackQuery, state: FSMContext):
+    try:
+        logger.info("Получена сфера деятельности пользователя")
+
+        field = callback.data.split(':')[1]
+        await state.update_data(field=field)
+        await state.set_state(CreateNoteNetworkingChat.waiting_for_description)
+
+        await callback.message.answer("Отправьте описание о себе")
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Ошибка в функции get_field_networking_chat(): {e}")
+
+@user_router.message(CreateNoteNetworkingChat.waiting_for_description)
+async def get_description_networking_chat(message: Message, state: FSMContext):
+    try:
+        logger.info("Получено описание о пользователе")
+
+        await state.update_data(description=message.text)
+        await message.answer("Будет ли у вас фотография?", reply_markup=networking_yes_no_kb)
+    except Exception as e:
+        logger.error(f"Ошибка в функции get_description_networking_chat(): {e}")
+
+@user_router.callback_query(F.data == "image_necessary_net")
+async def add_image_in_note(callback: CallbackQuery, state: FSMContext):
+    try:
+        logger.info("Будет добавлена фотография в карточку")
+
+        await callback.message.answer("Отправьте изображение")
+        await state.set_state(CreateNoteNetworkingChat.waiting_for_photo)
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Ошибка в функции add_image_in_note(): {e}")
+
+@user_router.callback_query(F.data == "image_not_necessary_net")
+async def send_note_onlytext(callback: CallbackQuery, state: FSMContext):
+    try:
+        logger.info("В карточке не будет фотографии")
+
+        user_id = callback.from_user.id
+        data = await state.get_data()
+        await bot.send_message(
+                                chat_id=user_id, 
+                                text=(
+                                        f"✨ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ✨\n"
+                                        f"🧑‍💻 <b>Профиль участника</b>\n\n"
+                                        f"🪪 <b>ФИО:</b> <a href='tg://user?id={user_id}'>{data['full_name']}</a>\n"
+                                        f"🏷️ <b>Сфера:</b> {data['field']}\n\n"
+                                        f"📌 <b>О себе:</b>\n"
+                                        f"┗ {data['description']}\n\n"
+                                        f"✨ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ✨"
+                                    ),
+                                parse_mode="HTML"
+        )
+        await callback.message.answer("Отправлено будет только сообщение без фотографии! Подтвердите отправку", reply_markup=networking_send_cancel_kb)
+        await callback.answer()
+    except Exception as e:
+        logger.error(f"Ошибка в функции send_note_onlytext(): {e}")
+
+@user_router.message(CreateNoteNetworkingChat.waiting_for_photo)
+async def send_note_with_image(message: Message, state: FSMContext):
+    try:
+        logger.info(f"В карточку добавлено фото")
+
+        photo = message.photo[-1]
+        await state.update_data(photo_id=photo.file_id)
+        
+        user_id = message.from_user.id
+        data = await state.get_data()
+        await bot.send_photo(
+            chat_id=message.from_user.id,
+            photo=data["photo_id"],
+            caption=(
+                        f"✨ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ✨\n"
+                        f"🧑‍💻 <b>Профиль участника</b>\n\n"
+                        f"🪪 <b>ФИО:</b> <a href='tg://user?id={user_id}'>{data['full_name']}</a>\n"
+                        f"🏷️ <b>Сфера:</b> {data['field']}\n\n"
+                        f"📌 <b>О себе:</b>\n"
+                        f"┗ {data['description']}\n\n"
+                        f"✨ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ✨"
+                    ),
+            parse_mode="HTML"
+        )
+        await message.answer("Фотография получена! Подтвердите отправку", reply_markup=networking_send_cancel_kb)
+    except Exception as e:
+        logger.error(f"Ошибка в функции send_note_with_image(): {e}")
+
+@user_router.callback_query(F.data == "send_note")
+async def send_note(callback: CallbackQuery, state: FSMContext):
+    try:
+        data = await state.get_data()
+        user_id = callback.from_user.id
+
+        if "photo_id" in data:
+            await bot.send_photo(
+                chat_id=networking_chat_id,
+                photo=data["photo_id"],
+                caption=(
+                            f"✨ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ✨\n"
+                            f"🧑‍💻 <b>Профиль участника</b>\n\n"
+                            f"🪪 <b>ФИО:</b> <a href='tg://user?id={user_id}'>{data['full_name']}</a>\n"
+                            f"🏷️ <b>Сфера:</b> {data['field']}\n\n"
+                            f"📌 <b>О себе:</b>\n"
+                            f"┗ {data['description']}\n\n"
+                            f"✨ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ✨"
+                        ),
+                parse_mode="HTML"
+            )
+        else:
+            await bot.send_message(
+                chat_id=networking_chat_id, 
+                text=(
+                        f"✨ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ✨\n"
+                        f"🧑‍💻 <b>Профиль участника</b>\n\n"
+                        f"🪪 <b>ФИО:</b> <a href='tg://user?id={user_id}'>{data['full_name']}</a>\n"
+                        f"🏷️ <b>Сфера:</b> {data['field']}\n\n"
+                        f"📌 <b>О себе:</b>\n"
+                        f"┗ {data['description']}\n\n"
+                        f"✨ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ ✨"
+                    ),
+                parse_mode="HTML"
+            )
+        await callback.message.answer("Карточка успешно отправлена в чат!")
+        await callback.answer()
+        logger.info(f"Пользователь {callback.from_user.id} успешно отправил карточку в чат")
+        
+        await state.clear()
+    except Exception as e:
+        logger.error(f"Ошибка в функции send_note(): {e}")

@@ -167,7 +167,7 @@ async def delete_organizer_(user_id: int):
 
 async def get_users_id_name():
     async with aiosqlite.connect(DB_NAME) as db:
-        cursor = await db.execute("SELECT user_id, user_name FROM users INNER JOIN user_role ON users.user_id = user_role.user_id WHERE role = 'user'")
+        cursor = await db.execute("SELECT users.user_id, user_name FROM users INNER JOIN user_role ON users.user_id = user_role.user_id WHERE role = 'user'")
         return await cursor.fetchall()
     
 async def get_schedule():

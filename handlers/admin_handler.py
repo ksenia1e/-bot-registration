@@ -116,8 +116,11 @@ async def attach_image(message: Message, state: FSMContext):
         logger.error(f"Ошибка в функции attach_image(): {e}")
 
 @admin_router.callback_query(F.data == "image_not_necessary")
-async def send_broadcast_onlytext(callback: CallbackQuery):
+async def send_broadcast_onlytext(callback: CallbackQuery,  state: FSMContext):
     logger.info("В рассылку будет только текст")
+    
+    data = await state.get_data()
+    await bot.send_message(chat_id=callback.from_user.id, text=data["broadcast_text"])
     await callback.message.answer("Отправлено будет только сообщение без фотографии! Подтвердите отправку", reply_markup=broadcast_builder_send_cancel_kb)
     await callback.answer()
 
@@ -151,7 +154,7 @@ async def send_broadcast(callback: CallbackQuery, state: FSMContext):
         await callback.answer()
         logger.info(f"Админ {callback.from_user.id} успешно завершил рассылку")
         
-        state.clear()
+        await state.clear()
     except Exception as e:
         logger.error(f"Ошибка в функции send_broadcast(): {e}")
 
@@ -190,7 +193,11 @@ async def show_organizers(callback: CallbackQuery):
     organizers = await get_organizers()
 
     kb = await get_kb_show_organozers(organizers)
-    await callback.message.answer("Выберите организатора на удаление", reply_markup=kb)
+
+    if not kb.inline_keyboard:
+        await callback.message.answer("Список организаторов пуст")
+    else:
+        await callback.message.answer("Выберите организатора на удаление", reply_markup=kb)
     await callback.answer()
     logger.info(f"Админ {callback.from_user.id} запросил вывод организаторов на удаление")
 
@@ -205,37 +212,41 @@ async def delete_organizer(callback: CallbackQuery):
 
 @admin_router.callback_query(F.data == "hold_draw")
 async def hold_draw(callback: CallbackQuery):
-    await callback.message.answer("Розыгрыш начат...")
-    users = await get_users_id_name()
-    logger.info(f"Админ {callback.from_user.id} начал розыгрыш для {len(users)} пользователей")
-    if not users:
-        await callback.message.answer("Нет пользователей для розыгрыша")
+    try:
+        await callback.message.answer("Розыгрыш начат...")
+        users = await get_users_id_name()
+        logger.info(f"Админ {callback.from_user.id} начал розыгрыш для {len(users)} пользователей")
+        if not users:
+            await callback.message.answer("Нет пользователей для розыгрыша")
+            await callback.answer()
+            logger.info("Нет пользователей для розыгрыша")
+            return
+
+        text1 = "🎉Сейчас будет проведен розыгрыш, результаты будут через 5 секунд..."
+
+        for user_id, _ in users:
+            try:
+                await bot.send_message(chat_id=user_id, text=text1)
+            except Exception as e:
+                logger.warning(f"Ошибка при отправке пользователю {user_id}: {e}")
+
+        await asyncio.sleep(5)
+        winner_user_id, winner_user_name = await get_random_user(users)
+
+        text2 = f"**Результаты розыгрыша**\n 🏆 Победитель: {winner_user_name or 'Аноним'} (ID: {winner_user_id})"
+
+        for user_id, _ in users:
+            try:
+                await bot.send_message(chat_id=user_id, text=text2)
+            except Exception as e:
+                logger.warning(f"Ошибка при отправке пользователю {user_id}: {e}")
+        
+        await callback.message.answer("Розыгрыш завершен.")
         await callback.answer()
-        logger.info("Нет пользователей для розыгрыша")
-        return
+        logger.info(f"Рассылка завершена админом {callback.from_user.id}")
 
-    text1 = "🎉Сейчас будет проведен розыгрыш, результаты будут через 5 секунд..."
-
-    for user_id, _ in users:
-        try:
-            await bot.send_message(chat_id=user_id, text=text1)
-        except Exception as e:
-            logger.warning(f"Ошибка при отправке пользователю {user_id}: {e}")
-
-    await asyncio.sleep(5)
-    winner_user_id, winner_user_name = await get_random_user(users)
-
-    text2 = f"**Результаты розыгрыша**\n 🏆 Победитель: {winner_user_name or 'Аноним'} (ID: {winner_user_id})"
-
-    for user_id, _ in users:
-        try:
-            await bot.send_message(chat_id=user_id, text=text2)
-        except Exception as e:
-            logger.warning(f"Ошибка при отправке пользователю {user_id}: {e}")
-    
-    await callback.message.answer("Розыгрыш завершен.")
-    await callback.answer()
-    logger.info(f"Рассылка завершена админом {callback.from_user.id}")
+    except Exception as e:
+        logger.error(f"Ошибка в функции hold_draw(): {e}")
 
 @admin_router.callback_query(F.data == "synchronization")
 async def synchronization_db_and_gs(callback: CallbackQuery):
