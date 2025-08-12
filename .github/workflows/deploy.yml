@@ -14,9 +14,6 @@ jobs:
         with:
           python-version: "3.12.6"
 
-      - name: Install dependecies
-        run: pip install -r requirements.txt
-
       - name: Create repository if not exists
         uses: appleboy/ssh-action@v1
         with:
@@ -35,9 +32,9 @@ jobs:
           script: |
             cd /root/stazh/Bot
             if [ ! -d ".git" ]; then
-              git clone https://${{ secrets.GH_USERNAME }}:${{ secrets.GH_TOKEN }}@github.com/ksenia1e/-bot-registration .
+              git clone https://github.com/ksenia1e/-bot-registration.git .
             else
-              git pull https://${{ secrets.GH_USERNAME }}:${{ secrets.GH_TOKEN }}@github.com/ksenia1e/-bot-registration master
+              git pull https://github.com/ksenia1e/-bot-registration.git master
             fi
 
       - name: Create .env file on server
