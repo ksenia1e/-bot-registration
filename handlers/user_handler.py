@@ -262,7 +262,7 @@ async def get_question(message: Message, state: FSMContext):
 
         await bot.send_message(
                             chat_id=speakers_chat, 
-                            text=f"Вопрос к спикеру {data["speaker_name"]} от <a href='tg://user?id={message.from_user.id}'>{message.from_user.full_name}</a>:\n{message.text}",
+                            text=f'Вопрос к спикеру {data["speaker_name"]} от <a href="tg://user?id={message.from_user.id}">{message.from_user.full_name}</a>:\n{message.text}',
                             parse_mode="HTML")
         await message.answer("Вопрос к спикеру был успешно отправлен")
     except Exception as e:
