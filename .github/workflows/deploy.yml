@@ -1,0 +1,57 @@
+name: Bot Python
+on:
+  push:
+
+jobs:
+  reload_bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get repository code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12.6"
+
+      - name: Install dependecies
+        run: pip install -r requirements.txt
+
+      - name: Create repository if not exists
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          script: |
+            mkdir -p /root/stazh/Bot
+
+      - name: Clone or update repository
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          script: |
+            cd /root/stazh/Bot
+            if [ ! -d ".git" ]; then
+              git clone https://${{ secrets.GH_USERNAME }}:${{ secrets.GH_TOKEN }}@github.com/ksenia1e/-bot-registration .
+            else
+              git pull https://${{ secrets.GH_USERNAME }}:${{ secrets.GH_TOKEN }}@github.com/ksenia1e/-bot-registration master
+            fi
+
+      - name: Create .env file on server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          script: |
+            cd /root/stazh/Bot
+            echo "BOT_TOKEN=${{ secrets.BOT_TOKEN }}" >> .env
+            echo "BOT_USERNAME=${{ secrets.BOT_USERNAME }}" >> .env
+            echo "TECHNICAL_CHAT_SUPPORT_ID=${{ secrets.TECHNICAL_CHAT_SUPPORT_ID }}" >> .env
+            echo "SPREADSHEET_ID=${{ secrets.SPREADSHEET_ID }}" >> .env
+            echo "SPEAKERS_CHAT=${{ secrets.SPEAKERS_CHAT }}" >> .env
+            echo "NETWORKING_CHAT_ID=${{ secrets.NETWORKING_CHAT_ID }}" >> .env
+            echo "NETWORKING_CHAT_NAME=${{ secrets.NETWORKING_CHAT_NAME }}" >> .env
